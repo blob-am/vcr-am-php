@@ -7,9 +7,13 @@ namespace BlobSolutions\VcrAm;
 use BlobSolutions\VcrAm\Exception\VcrApiException;
 use BlobSolutions\VcrAm\Exception\VcrNetworkException;
 use BlobSolutions\VcrAm\Exception\VcrValidationException;
+use BlobSolutions\VcrAm\Input\CreateCashierInput;
+use BlobSolutions\VcrAm\Input\CreateDepartmentInput;
 use BlobSolutions\VcrAm\Input\RegisterSaleInput;
 use BlobSolutions\VcrAm\Input\RegisterSaleRefundInput;
 use BlobSolutions\VcrAm\Model\CashierListItem;
+use BlobSolutions\VcrAm\Model\CreateCashierResponse;
+use BlobSolutions\VcrAm\Model\CreateDepartmentResponse;
 use BlobSolutions\VcrAm\Model\RegisterSaleRefundResponse;
 use BlobSolutions\VcrAm\Model\RegisterSaleResponse;
 use BlobSolutions\VcrAm\Model\SaleDetail;
@@ -147,6 +151,46 @@ final class VcrClient
             'POST',
             '/sales/refund',
             RegisterSaleRefundResponse::class,
+            $input->jsonSerialize(),
+        );
+
+        return $result;
+    }
+
+    /**
+     * Creates a new cashier under the authenticated VCR.AM account.
+     *
+     * @throws VcrApiException
+     * @throws VcrNetworkException
+     * @throws VcrValidationException
+     */
+    public function createCashier(CreateCashierInput $input): CreateCashierResponse
+    {
+        /** @var CreateCashierResponse $result */
+        $result = $this->request(
+            'POST',
+            '/cashiers',
+            CreateCashierResponse::class,
+            $input->jsonSerialize(),
+        );
+
+        return $result;
+    }
+
+    /**
+     * Creates a new department under the authenticated VCR.AM account.
+     *
+     * @throws VcrApiException
+     * @throws VcrNetworkException
+     * @throws VcrValidationException
+     */
+    public function createDepartment(CreateDepartmentInput $input): CreateDepartmentResponse
+    {
+        /** @var CreateDepartmentResponse $result */
+        $result = $this->request(
+            'POST',
+            '/departments',
+            CreateDepartmentResponse::class,
             $input->jsonSerialize(),
         );
 
