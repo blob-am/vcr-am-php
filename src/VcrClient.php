@@ -10,6 +10,7 @@ use BlobSolutions\VcrAm\Exception\VcrValidationException;
 use BlobSolutions\VcrAm\Input\RegisterSaleInput;
 use BlobSolutions\VcrAm\Model\CashierListItem;
 use BlobSolutions\VcrAm\Model\RegisterSaleResponse;
+use BlobSolutions\VcrAm\Model\SaleDetail;
 use CuyZ\Valinor\Mapper\MappingError;
 use CuyZ\Valinor\Mapper\Source\Source;
 use CuyZ\Valinor\Mapper\TreeMapper;
@@ -125,6 +126,33 @@ final class VcrClient
             '/sales',
             RegisterSaleResponse::class,
             $this->encodeJsonSerializable($input),
+        );
+
+        return $result;
+    }
+
+    /**
+     * Reads back the full detail of a previously-registered sale.
+     *
+     * @param int $saleId The numeric sale id returned by
+     *                    {@see self::registerSale()} as `RegisterSaleResponse::$saleId`.
+     *
+     * @throws InvalidArgumentException When `$saleId` is negative
+     * @throws VcrApiException
+     * @throws VcrNetworkException
+     * @throws VcrValidationException
+     */
+    public function getSale(int $saleId): SaleDetail
+    {
+        if ($saleId < 0) {
+            throw new InvalidArgumentException('saleId must be non-negative.');
+        }
+
+        /** @var SaleDetail $result */
+        $result = $this->request(
+            'GET',
+            sprintf('/sales/%d', $saleId),
+            SaleDetail::class,
         );
 
         return $result;
@@ -259,7 +287,7 @@ final class VcrClient
     }
 
     /**
-     * Encodes a top-level {@see \JsonSerializable} input into the array shape
+     * Encodes a top-level {@see JsonSerializable} input into the array shape
      * the {@see self::request()} helper expects. Nested JsonSerializable
      * values inside the array are left intact — `json_encode` resolves them
      * recursively when the request is built.
