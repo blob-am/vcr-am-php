@@ -19,8 +19,6 @@ use Http\Discovery\Psr17FactoryDiscovery;
 use Http\Discovery\Psr18ClientDiscovery;
 use InvalidArgumentException;
 use JsonException;
-use JsonSerializable;
-use LogicException;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
@@ -125,7 +123,7 @@ final class VcrClient
             'POST',
             '/sales',
             RegisterSaleResponse::class,
-            $this->encodeJsonSerializable($input),
+            $input->jsonSerialize(),
         );
 
         return $result;
@@ -272,11 +270,11 @@ final class VcrClient
             ->withHeader('User-Agent', sprintf('vcr-am-sdk-php/%s (+https://github.com/blob-am/vcr-am-sdk-php)', self::VERSION));
 
         if ($jsonBody !== null) {
-            try {
-                $encoded = json_encode($jsonBody, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-            } catch (JsonException $e) {
-                throw new InvalidArgumentException('Failed to JSON-encode request body: ' . $e->getMessage(), 0, $e);
-            }
+            // JSON_THROW_ON_ERROR surfaces unencodable input (NaN, INF,
+            // resources, recursive structures) as a JsonException — the
+            // caller's `$jsonBody` would have to be programmatically wrong
+            // for that to fire, so we let it propagate untransformed.
+            $encoded = json_encode($jsonBody, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
             $request = $request
                 ->withHeader('Content-Type', 'application/json')
@@ -284,41 +282,6 @@ final class VcrClient
         }
 
         return $request;
-    }
-
-    /**
-     * Encodes a top-level {@see JsonSerializable} input into the array shape
-     * the {@see self::request()} helper expects. Nested JsonSerializable
-     * values inside the array are left intact — `json_encode` resolves them
-     * recursively when the request is built.
-     *
-     * @return array<string, mixed>
-     */
-    private function encodeJsonSerializable(JsonSerializable $input): array
-    {
-        $encoded = $input->jsonSerialize();
-
-        if (! is_array($encoded)) {
-            throw new LogicException(sprintf(
-                '%s::jsonSerialize() must return an array; got %s.',
-                $input::class,
-                get_debug_type($encoded),
-            ));
-        }
-
-        $result = [];
-        foreach ($encoded as $key => $value) {
-            if (! is_string($key)) {
-                throw new LogicException(sprintf(
-                    '%s::jsonSerialize() must return a string-keyed array; got int key %d.',
-                    $input::class,
-                    $key,
-                ));
-            }
-            $result[$key] = $value;
-        }
-
-        return $result;
     }
 
     /**

@@ -59,3 +59,7 @@ jobs:
       - name: Type coverage
         if: matrix.php == '8.5'
         run: vendor/bin/pest --type-coverage --min=100 --colors=always
+
+      - name: Line coverage (must hit 100%)
+        if: matrix.php == '8.5'
+        run: vendor/bin/pest --coverage --min=100 --colors=always

@@ -44,6 +44,28 @@ it('rejects an empty externalId on existing offer', function (): void {
     Offer::existing('  ');
 })->throws(InvalidArgumentException::class, 'externalId must not be empty.');
 
+it('rejects an empty externalId on createNew offer', function (): void {
+    Offer::createNew(
+        externalId: '   ',
+        title: OfferTitle::universal('Bread'),
+        type: OfferType::Product,
+        classifierCode: '01.01.01',
+        defaultMeasureUnit: Unit::Kilogram,
+        defaultDepartment: new Department(1),
+    );
+})->throws(InvalidArgumentException::class, 'externalId must not be empty.');
+
+it('rejects an empty classifierCode on createNew offer', function (): void {
+    Offer::createNew(
+        externalId: 'sku-1',
+        title: OfferTitle::universal('Bread'),
+        type: OfferType::Product,
+        classifierCode: '   ',
+        defaultMeasureUnit: Unit::Kilogram,
+        defaultDepartment: new Department(1),
+    );
+})->throws(InvalidArgumentException::class, 'classifierCode must not be empty.');
+
 it('serializes a universal offer title', function (): void {
     $title = OfferTitle::universal('Bread');
 
@@ -74,3 +96,7 @@ it('rejects a localized offer title without the hy key', function (): void {
 it('rejects a localized offer title with empty hy content', function (): void {
     OfferTitle::localized(['hy' => '   '], LocalizationStrategy::Transliteration);
 })->throws(InvalidArgumentException::class, '"hy" content must not be empty');
+
+it('rejects a universal offer title with empty content', function (): void {
+    OfferTitle::universal('   ');
+})->throws(InvalidArgumentException::class, 'Universal offer title content must not be empty.');

@@ -110,3 +110,20 @@ it('surfaces server-side validation errors as VcrApiException', function (): voi
             ->and($e->apiErrorMessage)->toBe('TIN must be 8 or 10 digits.');
     }
 });
+
+it('surfaces transport failures as VcrNetworkException', function (): void {
+    [$client, $mock] = makeMockedClient();
+    $cause = new class ('TLS handshake failed') extends RuntimeException implements Psr\Http\Client\ClientExceptionInterface {};
+    $mock->addException($cause);
+
+    $client->registerSale(makeMinimalSaleInput());
+})->throws(BlobSolutions\VcrAm\Exception\VcrNetworkException::class);
+
+it('surfaces a malformed response as VcrValidationException', function (): void {
+    [$client, $mock] = makeMockedClient();
+    // Server returns 200 OK but with a body that does not match RegisterSaleResponse
+    $body = json_encode(['urlId' => 'r/abc'], JSON_THROW_ON_ERROR);
+    $mock->addResponse(new Response(200, ['Content-Type' => 'application/json'], $body));
+
+    $client->registerSale(makeMinimalSaleInput());
+})->throws(BlobSolutions\VcrAm\Exception\VcrValidationException::class);

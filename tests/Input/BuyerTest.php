@@ -36,6 +36,20 @@ it('serializes a business entity buyer with a TIN', function (): void {
         ]);
 });
 
+it('serializes a business entity buyer with both TIN and receipt', function (): void {
+    $buyer = Buyer::businessEntity(
+        '12345678',
+        new SendReceiptToBuyer('billing@example.com', Language::Russian),
+    );
+
+    expect(json_encode($buyer, JSON_THROW_ON_ERROR))
+        ->toBe(json_encode([
+            'type' => 'business_entity',
+            'tin' => '12345678',
+            'receipt' => ['email' => 'billing@example.com', 'language' => 'ru'],
+        ], JSON_THROW_ON_ERROR));
+});
+
 it('rejects an empty TIN for a business entity', function (): void {
     Buyer::businessEntity('  ');
 })->throws(InvalidArgumentException::class, 'TIN must not be empty for a business entity.');

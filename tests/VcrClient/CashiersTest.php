@@ -158,3 +158,35 @@ it('throws VcrValidationException when the JSON root is a scalar', function (): 
         expect($e->detail)->toContain('expected JSON array or object');
     }
 });
+
+it('handles a 4xx response whose JSON body is a non-object root (extractApiError null path)', function (): void {
+    [$client, $mock] = makeMockedClient();
+    // Valid JSON but a scalar root — extractApiError can't pluck code/message.
+    $mock->addResponse(new Response(500, ['Content-Type' => 'application/json'], '"server exploded"'));
+
+    try {
+        $client->listCashiers();
+        Assert::fail('expected VcrApiException');
+    } catch (VcrApiException $e) {
+        expect($e->statusCode)->toBe(500)
+            ->and($e->apiErrorCode)->toBeNull()
+            ->and($e->apiErrorMessage)->toBeNull()
+            ->and($e->rawBody)->toBe('"server exploded"');
+    }
+});
+
+it('handles a 4xx response whose error envelope has non-string code and message', function (): void {
+    [$client, $mock] = makeMockedClient();
+    // Server bug: emits code/message as non-strings. Defensive narrowing kicks in.
+    $body = json_encode(['code' => 42, 'message' => null], JSON_THROW_ON_ERROR);
+    $mock->addResponse(new Response(400, ['Content-Type' => 'application/json'], $body));
+
+    try {
+        $client->listCashiers();
+        Assert::fail('expected VcrApiException');
+    } catch (VcrApiException $e) {
+        expect($e->statusCode)->toBe(400)
+            ->and($e->apiErrorCode)->toBeNull()
+            ->and($e->apiErrorMessage)->toBeNull();
+    }
+});
