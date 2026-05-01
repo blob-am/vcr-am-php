@@ -16,9 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # PHP 8.5 omitted until cuyz/valinor publishes a release with 8.5
-        # support (their constraint currently caps at ~8.4.0).
-        php: ['8.2', '8.3', '8.4']
+        php: ['8.2', '8.3', '8.4', '8.5']
 
     steps:
       - uses: actions/checkout@v6
@@ -59,5 +57,5 @@ jobs:
         run: vendor/bin/pest --colors=always
 
       - name: Type coverage
-        if: matrix.php == '8.4'
+        if: matrix.php == '8.5'
         run: vendor/bin/pest --type-coverage --min=100 --colors=always

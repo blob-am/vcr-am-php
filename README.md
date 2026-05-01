@@ -63,9 +63,7 @@ The SDK does **not** retry failed requests automatically. Fiscalization endpoint
 
 | SDK version | PHP versions tested |
 |---|---|
-| `^0.x` | 8.2, 8.3, 8.4 |
-
-PHP 8.5 will be added once `cuyz/valinor` ships a release that declares 8.5 support — the SDK itself works on 8.5, but the validation library currently caps at 8.4.
+| `^0.x` | 8.2, 8.3, 8.4, 8.5 |
 
 ## Development
 
