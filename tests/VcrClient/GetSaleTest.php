@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 use BlobSolutions\VcrAm\Exception\VcrApiException;
 use BlobSolutions\VcrAm\Language;
+use BlobSolutions\VcrAm\Model\Cashier;
 use BlobSolutions\VcrAm\Model\Receipt;
-use BlobSolutions\VcrAm\Model\SaleCashier;
 use BlobSolutions\VcrAm\Model\SaleDetail;
 use BlobSolutions\VcrAm\Model\SaleItem;
 use BlobSolutions\VcrAm\Model\SaleRefund;
@@ -92,7 +92,7 @@ it('parses a complete sale detail response into nested DTOs', function (): void 
         ->and($sale->buyerTin)->toBeNull()
         ->and($sale->cashAmount)->toBe(1500.0)
         ->and($sale->refunds)->toBe([])
-        ->and($sale->cashier)->toBeInstanceOf(SaleCashier::class)
+        ->and($sale->cashier)->toBeInstanceOf(Cashier::class)
         ->and($sale->cashier->deskId)->toBe('desk-1')
         ->and($sale->receipt)->toBeInstanceOf(Receipt::class);
 

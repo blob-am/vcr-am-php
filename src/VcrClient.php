@@ -9,11 +9,16 @@ use BlobSolutions\VcrAm\Exception\VcrNetworkException;
 use BlobSolutions\VcrAm\Exception\VcrValidationException;
 use BlobSolutions\VcrAm\Input\CreateCashierInput;
 use BlobSolutions\VcrAm\Input\CreateDepartmentInput;
+use BlobSolutions\VcrAm\Input\RegisterPrepaymentInput;
+use BlobSolutions\VcrAm\Input\RegisterPrepaymentRefundInput;
 use BlobSolutions\VcrAm\Input\RegisterSaleInput;
 use BlobSolutions\VcrAm\Input\RegisterSaleRefundInput;
 use BlobSolutions\VcrAm\Model\CashierListItem;
 use BlobSolutions\VcrAm\Model\CreateCashierResponse;
 use BlobSolutions\VcrAm\Model\CreateDepartmentResponse;
+use BlobSolutions\VcrAm\Model\PrepaymentDetail;
+use BlobSolutions\VcrAm\Model\RegisterPrepaymentRefundResponse;
+use BlobSolutions\VcrAm\Model\RegisterPrepaymentResponse;
 use BlobSolutions\VcrAm\Model\RegisterSaleRefundResponse;
 use BlobSolutions\VcrAm\Model\RegisterSaleResponse;
 use BlobSolutions\VcrAm\Model\SaleDetail;
@@ -151,6 +156,73 @@ final class VcrClient
             'POST',
             '/sales/refund',
             RegisterSaleRefundResponse::class,
+            $input->jsonSerialize(),
+        );
+
+        return $result;
+    }
+
+    /**
+     * Registers a prepayment — an advance payment from a buyer that will be
+     * redeemed against a future sale.
+     *
+     * @throws VcrApiException
+     * @throws VcrNetworkException
+     * @throws VcrValidationException
+     */
+    public function registerPrepayment(RegisterPrepaymentInput $input): RegisterPrepaymentResponse
+    {
+        /** @var RegisterPrepaymentResponse $result */
+        $result = $this->request(
+            'POST',
+            '/prepayments',
+            RegisterPrepaymentResponse::class,
+            $input->jsonSerialize(),
+        );
+
+        return $result;
+    }
+
+    /**
+     * Reads back the full detail of a previously-registered prepayment.
+     *
+     * @throws InvalidArgumentException When `$prepaymentId` is negative
+     * @throws VcrApiException
+     * @throws VcrNetworkException
+     * @throws VcrValidationException
+     */
+    public function getPrepayment(int $prepaymentId): PrepaymentDetail
+    {
+        if ($prepaymentId < 0) {
+            throw new InvalidArgumentException('prepaymentId must be non-negative.');
+        }
+
+        /** @var PrepaymentDetail $result */
+        $result = $this->request(
+            'GET',
+            sprintf('/prepayments/%d', $prepaymentId),
+            PrepaymentDetail::class,
+        );
+
+        return $result;
+    }
+
+    /**
+     * Refunds a previously-registered prepayment in full. There is no
+     * partial-refund variant — a prepayment is an indivisible advance
+     * amount and is either kept or fully reversed.
+     *
+     * @throws VcrApiException
+     * @throws VcrNetworkException
+     * @throws VcrValidationException
+     */
+    public function registerPrepaymentRefund(RegisterPrepaymentRefundInput $input): RegisterPrepaymentRefundResponse
+    {
+        /** @var RegisterPrepaymentRefundResponse $result */
+        $result = $this->request(
+            'POST',
+            '/prepayments/refund',
+            RegisterPrepaymentRefundResponse::class,
             $input->jsonSerialize(),
         );
 

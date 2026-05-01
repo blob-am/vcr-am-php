@@ -31,7 +31,7 @@ final readonly class SaleDetail
         public float $compensationAmount,
         public ?Receipt $receipt,
         public array $refunds,
-        public SaleCashier $cashier,
+        public Cashier $cashier,
         public array $items,
     ) {
     }
