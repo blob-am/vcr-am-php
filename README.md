@@ -44,7 +44,7 @@ use BlobSolutions\VcrAm\VcrClient;
 
 $client = new VcrClient(
     apiKey: $apiKey,
-    baseUrl: VcrClient::DEFAULT_BASE_URL,  // 'https://app.vcr.am'
+    baseUrl: VcrClient::DEFAULT_BASE_URL,  // 'https://vcr.am/api/v1'
     timeoutMs: VcrClient::DEFAULT_TIMEOUT_MS,
     httpClient: $myPsr18Client,            // optional override
     requestFactory: $myPsr17Factory,       // optional override

@@ -7,7 +7,9 @@ namespace BlobSolutions\VcrAm;
 use BlobSolutions\VcrAm\Exception\VcrApiException;
 use BlobSolutions\VcrAm\Exception\VcrNetworkException;
 use BlobSolutions\VcrAm\Exception\VcrValidationException;
+use BlobSolutions\VcrAm\Input\RegisterSaleInput;
 use BlobSolutions\VcrAm\Model\CashierListItem;
+use BlobSolutions\VcrAm\Model\RegisterSaleResponse;
 use CuyZ\Valinor\Mapper\MappingError;
 use CuyZ\Valinor\Mapper\Source\Source;
 use CuyZ\Valinor\Mapper\TreeMapper;
@@ -16,6 +18,8 @@ use Http\Discovery\Psr17FactoryDiscovery;
 use Http\Discovery\Psr18ClientDiscovery;
 use InvalidArgumentException;
 use JsonException;
+use JsonSerializable;
+use LogicException;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
@@ -98,6 +102,29 @@ final class VcrClient
             'GET',
             '/cashiers',
             'list<' . CashierListItem::class . '>',
+        );
+
+        return $result;
+    }
+
+    /**
+     * Registers (fiscalises) a sale through the VCR.AM API. Returns the
+     * SRC-issued identifiers required to display or share the receipt.
+     *
+     * @throws VcrApiException        On non-2xx HTTP responses (validation
+     *                                rejections from the server, expired
+     *                                tokens, etc.)
+     * @throws VcrNetworkException    On network/transport failures
+     * @throws VcrValidationException On schema mismatches in the response body
+     */
+    public function registerSale(RegisterSaleInput $input): RegisterSaleResponse
+    {
+        /** @var RegisterSaleResponse $result */
+        $result = $this->request(
+            'POST',
+            '/sales',
+            RegisterSaleResponse::class,
+            $this->encodeJsonSerializable($input),
         );
 
         return $result;
@@ -229,6 +256,41 @@ final class VcrClient
         }
 
         return $request;
+    }
+
+    /**
+     * Encodes a top-level {@see \JsonSerializable} input into the array shape
+     * the {@see self::request()} helper expects. Nested JsonSerializable
+     * values inside the array are left intact — `json_encode` resolves them
+     * recursively when the request is built.
+     *
+     * @return array<string, mixed>
+     */
+    private function encodeJsonSerializable(JsonSerializable $input): array
+    {
+        $encoded = $input->jsonSerialize();
+
+        if (! is_array($encoded)) {
+            throw new LogicException(sprintf(
+                '%s::jsonSerialize() must return an array; got %s.',
+                $input::class,
+                get_debug_type($encoded),
+            ));
+        }
+
+        $result = [];
+        foreach ($encoded as $key => $value) {
+            if (! is_string($key)) {
+                throw new LogicException(sprintf(
+                    '%s::jsonSerialize() must return a string-keyed array; got int key %d.',
+                    $input::class,
+                    $key,
+                ));
+            }
+            $result[$key] = $value;
+        }
+
+        return $result;
     }
 
     /**

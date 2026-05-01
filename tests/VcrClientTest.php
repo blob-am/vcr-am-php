@@ -21,9 +21,9 @@ it('rejects a negative timeout', function (): void {
 })->throws(InvalidArgumentException::class, 'timeoutMs must be positive.');
 
 it('strips a trailing slash from baseUrl', function (): void {
-    $client = new VcrClient(apiKey: 'test-key', baseUrl: 'https://app.vcr.am/');
+    $client = new VcrClient(apiKey: 'test-key', baseUrl: 'https://vcr.am/api/v1/');
 
-    expect($client->baseUrl)->toBe('https://app.vcr.am');
+    expect($client->baseUrl)->toBe('https://vcr.am/api/v1');
 });
 
 it('uses the default baseUrl when none is provided', function (): void {
