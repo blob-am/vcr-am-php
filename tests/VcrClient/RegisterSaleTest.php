@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use BlobSolutions\VcrAm\Exception\VcrApiException;
+use BlobSolutions\VcrAm\Exception\VcrNetworkException;
+use BlobSolutions\VcrAm\Exception\VcrValidationException;
 use BlobSolutions\VcrAm\Input\Buyer;
 use BlobSolutions\VcrAm\Input\CashierId;
 use BlobSolutions\VcrAm\Input\Department;
@@ -12,6 +14,8 @@ use BlobSolutions\VcrAm\Input\SaleAmount;
 use BlobSolutions\VcrAm\Input\SaleItem;
 use BlobSolutions\VcrAm\Model\RegisterSaleResponse;
 use BlobSolutions\VcrAm\Unit;
+use Http\Client\Exception\NetworkException;
+use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7\Response;
 use PHPUnit\Framework\Assert;
 use Psr\Http\Message\RequestInterface;
@@ -113,11 +117,12 @@ it('surfaces server-side validation errors as VcrApiException', function (): voi
 
 it('surfaces transport failures as VcrNetworkException', function (): void {
     [$client, $mock] = makeMockedClient();
-    $cause = new class ('TLS handshake failed') extends RuntimeException implements Psr\Http\Client\ClientExceptionInterface {};
+    $factory = new Psr17Factory();
+    $cause = new NetworkException('TLS handshake failed', $factory->createRequest('POST', 'https://vcr.am/api/v1/sales'));
     $mock->addException($cause);
 
     $client->registerSale(makeMinimalSaleInput());
-})->throws(BlobSolutions\VcrAm\Exception\VcrNetworkException::class);
+})->throws(VcrNetworkException::class);
 
 it('surfaces a malformed response as VcrValidationException', function (): void {
     [$client, $mock] = makeMockedClient();
@@ -126,4 +131,4 @@ it('surfaces a malformed response as VcrValidationException', function (): void 
     $mock->addResponse(new Response(200, ['Content-Type' => 'application/json'], $body));
 
     $client->registerSale(makeMinimalSaleInput());
-})->throws(BlobSolutions\VcrAm\Exception\VcrValidationException::class);
+})->throws(VcrValidationException::class);

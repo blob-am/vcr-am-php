@@ -6,9 +6,10 @@ use BlobSolutions\VcrAm\Exception\VcrApiException;
 use BlobSolutions\VcrAm\Exception\VcrNetworkException;
 use BlobSolutions\VcrAm\Exception\VcrValidationException;
 use BlobSolutions\VcrAm\Language;
+use Http\Client\Exception\NetworkException;
+use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7\Response;
 use PHPUnit\Framework\Assert;
-use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Message\RequestInterface;
 
 it('returns an empty list when the server returns no cashiers', function (): void {
@@ -119,7 +120,8 @@ it('throws VcrApiException on HTTP 500 even when the body is HTML, with null err
 
 it('throws VcrNetworkException when the PSR-18 client throws', function (): void {
     [$client, $mock] = makeMockedClient();
-    $cause = new class ('Connection refused') extends RuntimeException implements ClientExceptionInterface {};
+    $factory = new Psr17Factory();
+    $cause = new NetworkException('Connection refused', $factory->createRequest('GET', 'https://vcr.am/api/v1/cashiers'));
     $mock->addException($cause);
 
     $client->listCashiers();
