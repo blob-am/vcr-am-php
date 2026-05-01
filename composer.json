@@ -79,7 +79,7 @@
     },
     "scripts": {
         "test": "pest --colors=always",
-        "test:coverage": "pest --coverage --colors=always",
+        "test:coverage": "pest --coverage --min=100 --colors=always",
         "test:type-coverage": "pest --type-coverage --min=100 --colors=always",
         "phpstan": "phpstan analyse --no-progress",
         "format": "pint",
@@ -92,7 +92,7 @@
     },
     "scripts-descriptions": {
         "test": "Run Pest test suite",
-        "test:coverage": "Run tests with line coverage report",
+        "test:coverage": "Run tests with line coverage report (enforces 100%; requires xdebug or pcov locally)",
         "test:type-coverage": "Run Pest type coverage check (must be 100%)",
         "phpstan": "Run static analysis at level max + strict + deprecation rules",
         "format": "Apply Pint code style fixes",
