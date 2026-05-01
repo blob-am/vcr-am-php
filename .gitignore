@@ -1,0 +1,25 @@
+# Composer
+/vendor/
+composer.lock
+
+# PHP tooling caches
+.phpunit.cache/
+.phpunit.result.cache
+.phpstan.cache/
+build/
+coverage/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local
+.env
+.env.local
+.env.*.local
+.envrc
+playground/

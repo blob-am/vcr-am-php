@@ -1,0 +1,26 @@
+version: 2
+updates:
+  - package-ecosystem: composer
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    versioning-strategy: increase
+    groups:
+      http-libs:
+        patterns:
+          - "psr/*"
+          - "php-http/*"
+          - "guzzlehttp/*"
+          - "nyholm/*"
+      dev-tools:
+        dependency-type: development
+        patterns:
+          - "pestphp/*"
+          - "phpstan/*"
+          - "laravel/pint"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
