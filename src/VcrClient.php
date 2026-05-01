@@ -8,7 +8,9 @@ use BlobSolutions\VcrAm\Exception\VcrApiException;
 use BlobSolutions\VcrAm\Exception\VcrNetworkException;
 use BlobSolutions\VcrAm\Exception\VcrValidationException;
 use BlobSolutions\VcrAm\Input\RegisterSaleInput;
+use BlobSolutions\VcrAm\Input\RegisterSaleRefundInput;
 use BlobSolutions\VcrAm\Model\CashierListItem;
+use BlobSolutions\VcrAm\Model\RegisterSaleRefundResponse;
 use BlobSolutions\VcrAm\Model\RegisterSaleResponse;
 use BlobSolutions\VcrAm\Model\SaleDetail;
 use CuyZ\Valinor\Mapper\MappingError;
@@ -123,6 +125,28 @@ final class VcrClient
             'POST',
             '/sales',
             RegisterSaleResponse::class,
+            $input->jsonSerialize(),
+        );
+
+        return $result;
+    }
+
+    /**
+     * Registers a refund against a previously-registered sale. Pass `null`
+     * for `RegisterSaleRefundInput::$items` to refund the entire sale, or a
+     * partial list of {@see Input\RefundItemInput}.
+     *
+     * @throws VcrApiException
+     * @throws VcrNetworkException
+     * @throws VcrValidationException
+     */
+    public function registerSaleRefund(RegisterSaleRefundInput $input): RegisterSaleRefundResponse
+    {
+        /** @var RegisterSaleRefundResponse $result */
+        $result = $this->request(
+            'POST',
+            '/sales/refund',
+            RegisterSaleRefundResponse::class,
             $input->jsonSerialize(),
         );
 
