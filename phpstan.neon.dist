@@ -12,14 +12,9 @@ parameters:
     checkImplicitMixed: true
     checkMissingCallableSignature: true
     tmpDir: .phpstan.cache
-    # Skeleton phase: VcrClient injects HTTP / logger / auth dependencies that
-    # are not yet consumed because no endpoint methods exist. These ignores go
-    # away when the first endpoint lands.
-    ignoreErrors:
-        -
-            message: '#Property BlobSolutions\\VcrAm\\VcrClient::\$(apiKey|httpClient|requestFactory|streamFactory|logger) is never read, only written\.#'
-            path: src/VcrClient.php
 
 includes:
     - vendor/phpstan/phpstan-strict-rules/rules.neon
     - vendor/phpstan/phpstan-deprecation-rules/rules.neon
+    - vendor/phpstan/phpstan-phpunit/extension.neon
+    - vendor/phpstan/phpstan-phpunit/rules.neon
