@@ -37,7 +37,11 @@ it('rejects a negative srcId', function (): void {
 
 it('rejects an empty quantity', function (): void {
     new RefundItemInput(srcId: 1, quantity: '   ');
-})->throws(InvalidArgumentException::class, 'quantity must not be empty.');
+})->throws(InvalidArgumentException::class, 'quantity must be a non-negative decimal string');
+
+it('rejects a non-numeric quantity', function (): void {
+    new RefundItemInput(srcId: 1, quantity: 'one');
+})->throws(InvalidArgumentException::class, 'quantity must be a non-negative decimal string');
 
 it('rejects an empty emark entry', function (): void {
     new RefundItemInput(srcId: 1, quantity: '1', emarks: ['EMARK-001', '   ']);

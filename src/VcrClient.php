@@ -50,13 +50,16 @@ final class VcrClient
 {
     public const DEFAULT_BASE_URL = 'https://vcr.am/api/v1';
 
-    public const DEFAULT_TIMEOUT_MS = 30_000;
+    public const VERSION = '0.1.0';
 
-    public const VERSION = '0.1.0-dev';
+    /**
+     * Cap on how many bytes of an error response body are included in the
+     * SDK's structured warning log. The full body is still preserved on
+     * `VcrApiException::$rawBody` for callers that need the unabridged payload.
+     */
+    private const ERROR_BODY_PREVIEW_BYTES = 500;
 
     public readonly string $baseUrl;
-
-    public readonly int $timeoutMs;
 
     private readonly string $apiKey;
 
@@ -73,7 +76,6 @@ final class VcrClient
     public function __construct(
         string $apiKey,
         string $baseUrl = self::DEFAULT_BASE_URL,
-        int $timeoutMs = self::DEFAULT_TIMEOUT_MS,
         ?ClientInterface $httpClient = null,
         ?RequestFactoryInterface $requestFactory = null,
         ?StreamFactoryInterface $streamFactory = null,
@@ -83,13 +85,8 @@ final class VcrClient
             throw new InvalidArgumentException('apiKey must not be empty.');
         }
 
-        if ($timeoutMs <= 0) {
-            throw new InvalidArgumentException('timeoutMs must be positive.');
-        }
-
         $this->apiKey = $apiKey;
         $this->baseUrl = rtrim($baseUrl, '/');
-        $this->timeoutMs = $timeoutMs;
         $this->httpClient = $httpClient ?? Psr18ClientDiscovery::find();
         $this->requestFactory = $requestFactory ?? Psr17FactoryDiscovery::findRequestFactory();
         $this->streamFactory = $streamFactory ?? Psr17FactoryDiscovery::findStreamFactory();
@@ -314,7 +311,9 @@ final class VcrClient
      */
     public function searchClassifier(string $query, OfferType $type, Language $language): array
     {
-        if (trim($query) === '') {
+        $trimmedQuery = trim($query);
+
+        if ($trimmedQuery === '') {
             throw new InvalidArgumentException('query must not be empty.');
         }
 
@@ -329,7 +328,7 @@ final class VcrClient
             'list<' . ClassifierSearchItem::class . '>',
             null,
             [
-                'query' => $query,
+                'query' => $trimmedQuery,
                 'type' => $type->value,
                 'language' => $language->value,
             ],
@@ -405,7 +404,7 @@ final class VcrClient
                 'error' => $e->getMessage(),
             ]);
 
-            throw new VcrNetworkException($request, $e);
+            throw new VcrNetworkException($this->redactRequest($request), $e);
         }
 
         $rawBody = (string) $response->getBody();
@@ -420,6 +419,7 @@ final class VcrClient
                 'status' => $statusCode,
                 'errorCode' => $errorCode,
                 'errorMessage' => $errorMessage,
+                'rawBodyPreview' => mb_substr($rawBody, 0, self::ERROR_BODY_PREVIEW_BYTES),
             ]);
 
             throw new VcrApiException(
@@ -427,7 +427,7 @@ final class VcrClient
                 $errorCode,
                 $errorMessage,
                 $rawBody,
-                $request,
+                $this->redactRequest($request),
                 $response,
             );
         }
@@ -437,7 +437,7 @@ final class VcrClient
         } catch (JsonException $e) {
             throw new VcrValidationException(
                 $rawBody,
-                $request,
+                $this->redactRequest($request),
                 $response,
                 'response body is not valid JSON: ' . $e->getMessage(),
                 $e,
@@ -447,7 +447,7 @@ final class VcrClient
         if (! is_array($decoded)) {
             throw new VcrValidationException(
                 $rawBody,
-                $request,
+                $this->redactRequest($request),
                 $response,
                 'expected JSON array or object at the response root, got ' . get_debug_type($decoded),
             );
@@ -458,12 +458,23 @@ final class VcrClient
         } catch (MappingError $e) {
             throw new VcrValidationException(
                 $rawBody,
-                $request,
+                $this->redactRequest($request),
                 $response,
                 $e->getMessage(),
                 $e,
             );
         }
+    }
+
+    /**
+     * Strips secret-bearing headers from the request before it gets attached
+     * to a public-facing exception. APMs and loggers that introspect
+     * exception state (Sentry, Bugsnag, Laravel's verbose handler) routinely
+     * dump request headers — we don't want the bearer token in those breadcrumbs.
+     */
+    private function redactRequest(RequestInterface $request): RequestInterface
+    {
+        return $request->withoutHeader('Authorization');
     }
 
     /**

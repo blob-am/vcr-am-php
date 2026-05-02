@@ -24,12 +24,12 @@ final readonly class RefundAmount implements JsonSerializable
             );
         }
 
-        if ($cash !== null && trim($cash) === '') {
-            throw new InvalidArgumentException('cash must not be empty when provided.');
+        if ($cash !== null && preg_match('/^\d+(\.\d+)?$/', $cash) !== 1) {
+            throw new InvalidArgumentException('cash must be a non-negative decimal string (e.g. "5000" or "5000.00").');
         }
 
-        if ($nonCash !== null && trim($nonCash) === '') {
-            throw new InvalidArgumentException('nonCash must not be empty when provided.');
+        if ($nonCash !== null && preg_match('/^\d+(\.\d+)?$/', $nonCash) !== 1) {
+            throw new InvalidArgumentException('nonCash must be a non-negative decimal string (e.g. "5000" or "5000.00").');
         }
     }
 

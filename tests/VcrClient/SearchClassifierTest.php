@@ -64,6 +64,18 @@ it('rejects an empty query', function (): void {
     $client->searchClassifier('   ', OfferType::Product, Language::Armenian);
 })->throws(InvalidArgumentException::class, 'query must not be empty.');
 
+it('trims whitespace before encoding the query into the URL', function (): void {
+    [$client, $mock] = makeMockedClient();
+    $mock->addResponse(new Response(200, ['Content-Type' => 'application/json'], '[]'));
+
+    $client->searchClassifier('   bread   ', OfferType::Product, Language::English);
+
+    $request = $mock->getLastRequest();
+    assert($request instanceof RequestInterface);
+
+    expect((string) $request->getUri())->toContain('query=bread');
+});
+
 it('rejects Language::Multi', function (): void {
     [$client] = makeMockedClient();
 

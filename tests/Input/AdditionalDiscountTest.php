@@ -17,4 +17,8 @@ it('serializes a total additional discount', function (): void {
 
 it('rejects an empty value', function (): void {
     new AdditionalDiscount(AdditionalDiscountType::Total, '   ');
-})->throws(InvalidArgumentException::class, 'Discount value must not be empty.');
+})->throws(InvalidArgumentException::class, 'Discount value must be a non-negative decimal string');
+
+it('rejects a non-numeric value', function (): void {
+    new AdditionalDiscount(AdditionalDiscountType::Total, '5%');
+})->throws(InvalidArgumentException::class, 'Discount value must be a non-negative decimal string');

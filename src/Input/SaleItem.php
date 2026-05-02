@@ -26,16 +26,16 @@ final readonly class SaleItem implements JsonSerializable
         public ?Discounts $discounts = null,
         public ?string $totalAmountTolerance = null,
     ) {
-        if (trim($quantity) === '') {
-            throw new InvalidArgumentException('quantity must not be empty.');
+        if (preg_match('/^\d+(\.\d+)?$/', $quantity) !== 1) {
+            throw new InvalidArgumentException('quantity must be a non-negative decimal string (e.g. "1" or "1.500").');
         }
 
-        if (trim($price) === '') {
-            throw new InvalidArgumentException('price must not be empty.');
+        if (preg_match('/^\d+(\.\d+)?$/', $price) !== 1) {
+            throw new InvalidArgumentException('price must be a non-negative decimal string (e.g. "750" or "750.00").');
         }
 
-        if ($totalAmountTolerance !== null && trim($totalAmountTolerance) === '') {
-            throw new InvalidArgumentException('totalAmountTolerance must not be empty when provided. Omit the field instead.');
+        if ($totalAmountTolerance !== null && preg_match('/^\d+(\.\d+)?$/', $totalAmountTolerance) !== 1) {
+            throw new InvalidArgumentException('totalAmountTolerance must be a non-negative decimal string (e.g. "0.01"). Omit the field for an exact match.');
         }
     }
 

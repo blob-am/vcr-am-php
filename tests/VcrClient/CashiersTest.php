@@ -192,3 +192,41 @@ it('handles a 4xx response whose error envelope has non-string code and message'
             ->and($e->apiErrorMessage)->toBeNull();
     }
 });
+
+it('strips the Authorization header from the request on VcrApiException', function (): void {
+    [$client, $mock] = makeMockedClient();
+    $mock->addResponse(new Response(500, [], 'oops'));
+
+    try {
+        $client->listCashiers();
+        Assert::fail('expected VcrApiException');
+    } catch (VcrApiException $e) {
+        expect($e->request->hasHeader('Authorization'))->toBeFalse();
+    }
+});
+
+it('strips the Authorization header from the request on VcrNetworkException', function (): void {
+    [$client, $mock] = makeMockedClient();
+    $factory = new Psr17Factory();
+    $cause = new NetworkException('boom', $factory->createRequest('GET', 'https://vcr.am/api/v1/cashiers'));
+    $mock->addException($cause);
+
+    try {
+        $client->listCashiers();
+        Assert::fail('expected VcrNetworkException');
+    } catch (VcrNetworkException $e) {
+        expect($e->request->hasHeader('Authorization'))->toBeFalse();
+    }
+});
+
+it('strips the Authorization header from the request on VcrValidationException', function (): void {
+    [$client, $mock] = makeMockedClient();
+    $mock->addResponse(new Response(200, ['Content-Type' => 'application/json'], '{not json'));
+
+    try {
+        $client->listCashiers();
+        Assert::fail('expected VcrValidationException');
+    } catch (VcrValidationException $e) {
+        expect($e->request->hasHeader('Authorization'))->toBeFalse();
+    }
+});

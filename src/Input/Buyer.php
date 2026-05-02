@@ -30,8 +30,10 @@ final readonly class Buyer implements JsonSerializable
 
     public static function businessEntity(string $tin, ?SendReceiptToBuyer $receipt = null): self
     {
-        if (trim($tin) === '') {
-            throw new InvalidArgumentException('TIN must not be empty for a business entity.');
+        // Armenian TIN is exactly 8 (legal-entity) or 10 (sole-proprietor) digits.
+        // Catch malformed input client-side before round-tripping to the SRC.
+        if (preg_match('/^\d{8}$|^\d{10}$/', $tin) !== 1) {
+            throw new InvalidArgumentException('TIN must be exactly 8 or 10 digits.');
         }
 
         return new self(BuyerType::BusinessEntity, $tin, $receipt);

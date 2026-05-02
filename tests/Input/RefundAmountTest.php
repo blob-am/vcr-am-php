@@ -25,8 +25,12 @@ it('rejects when neither cash nor nonCash is set', function (): void {
 
 it('rejects an empty cash bucket', function (): void {
     new RefundAmount(cash: '   ');
-})->throws(InvalidArgumentException::class, 'cash must not be empty');
+})->throws(InvalidArgumentException::class, 'cash must be a non-negative decimal string');
 
 it('rejects an empty nonCash bucket', function (): void {
     new RefundAmount(nonCash: '   ');
-})->throws(InvalidArgumentException::class, 'nonCash must not be empty');
+})->throws(InvalidArgumentException::class, 'nonCash must be a non-negative decimal string');
+
+it('rejects a non-numeric cash value', function (): void {
+    new RefundAmount(cash: '300x');
+})->throws(InvalidArgumentException::class, 'cash must be a non-negative decimal string');

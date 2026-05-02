@@ -17,8 +17,8 @@ final readonly class BaseDiscount implements JsonSerializable
         public BaseDiscountType $type,
         public string $value,
     ) {
-        if (trim($value) === '') {
-            throw new InvalidArgumentException('Discount value must not be empty.');
+        if (preg_match('/^\d+(\.\d+)?$/', $value) !== 1) {
+            throw new InvalidArgumentException('Discount value must be a non-negative decimal string (e.g. "10" or "10.00").');
         }
     }
 

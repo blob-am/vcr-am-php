@@ -83,7 +83,17 @@ it('rejects an empty quantity', function (): void {
         price: '100',
         unit: Unit::Piece,
     );
-})->throws(InvalidArgumentException::class, 'quantity must not be empty.');
+})->throws(InvalidArgumentException::class, 'quantity must be a non-negative decimal string');
+
+it('rejects a non-numeric quantity', function (): void {
+    new SaleItem(
+        offer: Offer::existing('sku-1'),
+        department: new Department(1),
+        quantity: '1.5kg',
+        price: '100',
+        unit: Unit::Piece,
+    );
+})->throws(InvalidArgumentException::class, 'quantity must be a non-negative decimal string');
 
 it('rejects an empty price', function (): void {
     new SaleItem(
@@ -93,7 +103,17 @@ it('rejects an empty price', function (): void {
         price: '   ',
         unit: Unit::Piece,
     );
-})->throws(InvalidArgumentException::class, 'price must not be empty.');
+})->throws(InvalidArgumentException::class, 'price must be a non-negative decimal string');
+
+it('rejects a negative price', function (): void {
+    new SaleItem(
+        offer: Offer::existing('sku-1'),
+        department: new Department(1),
+        quantity: '1',
+        price: '-50',
+        unit: Unit::Piece,
+    );
+})->throws(InvalidArgumentException::class, 'price must be a non-negative decimal string');
 
 it('rejects an empty totalAmountTolerance string when provided', function (): void {
     new SaleItem(
@@ -104,4 +124,4 @@ it('rejects an empty totalAmountTolerance string when provided', function (): vo
         unit: Unit::Piece,
         totalAmountTolerance: '   ',
     );
-})->throws(InvalidArgumentException::class, 'totalAmountTolerance must not be empty');
+})->throws(InvalidArgumentException::class, 'totalAmountTolerance must be a non-negative decimal string');

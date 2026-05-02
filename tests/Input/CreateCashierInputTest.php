@@ -31,11 +31,28 @@ it('serializes name + password to the wire shape', function (): void {
 });
 
 it('accepts the minimum password length (4 digits)', function (): void {
-    expect((new CreateCashierInput(makeLocalizedCashierName(), '1234'))->password)->toBe('1234');
+    $input = new CreateCashierInput(makeLocalizedCashierName(), '1234');
+
+    expect(json_decode(json_encode($input, JSON_THROW_ON_ERROR), associative: true, flags: JSON_THROW_ON_ERROR))
+        ->toMatchArray(['password' => '1234']);
 });
 
 it('accepts the maximum password length (8 digits)', function (): void {
-    expect((new CreateCashierInput(makeLocalizedCashierName(), '12345678'))->password)->toBe('12345678');
+    $input = new CreateCashierInput(makeLocalizedCashierName(), '12345678');
+
+    expect(json_decode(json_encode($input, JSON_THROW_ON_ERROR), associative: true, flags: JSON_THROW_ON_ERROR))
+        ->toMatchArray(['password' => '12345678']);
+});
+
+it('redacts the password from var_dump output', function (): void {
+    $input = new CreateCashierInput(makeLocalizedCashierName(), '4242');
+
+    ob_start();
+    var_dump($input);
+    $dump = (string) ob_get_clean();
+
+    expect($dump)->toContain('[REDACTED]');
+    expect(str_contains($dump, '4242'))->toBeFalse();
 });
 
 it('rejects a password shorter than 4 digits', function (): void {

@@ -25,8 +25,16 @@ it('rejects when neither cash nor nonCash is set', function (): void {
 
 it('rejects an empty cash bucket', function (): void {
     new PrepaymentAmount(cash: '   ');
-})->throws(InvalidArgumentException::class, 'cash must not be empty');
+})->throws(InvalidArgumentException::class, 'cash must be a non-negative decimal string');
 
 it('rejects an empty nonCash bucket', function (): void {
     new PrepaymentAmount(nonCash: '   ');
-})->throws(InvalidArgumentException::class, 'nonCash must not be empty');
+})->throws(InvalidArgumentException::class, 'nonCash must be a non-negative decimal string');
+
+it('rejects a non-numeric cash value', function (): void {
+    new PrepaymentAmount(cash: 'NaN');
+})->throws(InvalidArgumentException::class, 'cash must be a non-negative decimal string');
+
+it('rejects a non-numeric nonCash value', function (): void {
+    new PrepaymentAmount(nonCash: 'NaN');
+})->throws(InvalidArgumentException::class, 'nonCash must be a non-negative decimal string');

@@ -29,8 +29,8 @@ final readonly class RefundItemInput implements JsonSerializable
             throw new InvalidArgumentException('srcId must be non-negative.');
         }
 
-        if (trim($quantity) === '') {
-            throw new InvalidArgumentException('quantity must not be empty.');
+        if (preg_match('/^\d+(\.\d+)?$/', $quantity) !== 1) {
+            throw new InvalidArgumentException('quantity must be a non-negative decimal string (e.g. "1" or "1.500").');
         }
 
         if ($emarks !== null) {

@@ -50,6 +50,28 @@ it('serializes a business entity buyer with both TIN and receipt', function (): 
         ], JSON_THROW_ON_ERROR));
 });
 
+it('accepts a 10-digit sole-proprietor TIN', function (): void {
+    $buyer = Buyer::businessEntity('1234567890');
+
+    expect($buyer->tin)->toBe('1234567890');
+});
+
 it('rejects an empty TIN for a business entity', function (): void {
     Buyer::businessEntity('  ');
-})->throws(InvalidArgumentException::class, 'TIN must not be empty for a business entity.');
+})->throws(InvalidArgumentException::class, 'TIN must be exactly 8 or 10 digits.');
+
+it('rejects a TIN with non-digit characters', function (): void {
+    Buyer::businessEntity('1234abcd');
+})->throws(InvalidArgumentException::class, 'TIN must be exactly 8 or 10 digits.');
+
+it('rejects a 7-digit TIN', function (): void {
+    Buyer::businessEntity('1234567');
+})->throws(InvalidArgumentException::class, 'TIN must be exactly 8 or 10 digits.');
+
+it('rejects a 9-digit TIN', function (): void {
+    Buyer::businessEntity('123456789');
+})->throws(InvalidArgumentException::class, 'TIN must be exactly 8 or 10 digits.');
+
+it('rejects an 11-digit TIN', function (): void {
+    Buyer::businessEntity('12345678901');
+})->throws(InvalidArgumentException::class, 'TIN must be exactly 8 or 10 digits.');

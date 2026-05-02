@@ -28,10 +28,21 @@ final readonly class SaleAmount implements JsonSerializable
         }
 
         foreach (['prepayment' => $prepayment, 'compensation' => $compensation, 'nonCash' => $nonCash, 'cash' => $cash] as $name => $value) {
-            if ($value !== null && trim($value) === '') {
-                throw new InvalidArgumentException(sprintf('%s must not be empty when provided.', $name));
+            if ($value !== null && ! self::isDecimalString($value)) {
+                throw new InvalidArgumentException(sprintf('%s must be a non-negative decimal string (e.g. "1500" or "1500.00").', $name));
             }
         }
+    }
+
+    /**
+     * Decimal string in the format expected by the SRC wire protocol:
+     * non-empty, digits only with at most one decimal point, no sign,
+     * no scientific notation. Mirrors the precision contract of the
+     * TypeScript SDK's `z.string().regex(/^\d+(\.\d+)?$/)` shape.
+     */
+    private static function isDecimalString(string $value): bool
+    {
+        return preg_match('/^\d+(\.\d+)?$/', $value) === 1;
     }
 
     /**
