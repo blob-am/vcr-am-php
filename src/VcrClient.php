@@ -9,13 +9,16 @@ use BlobSolutions\VcrAm\Exception\VcrNetworkException;
 use BlobSolutions\VcrAm\Exception\VcrValidationException;
 use BlobSolutions\VcrAm\Input\CreateCashierInput;
 use BlobSolutions\VcrAm\Input\CreateDepartmentInput;
+use BlobSolutions\VcrAm\Input\CreateOfferInput;
 use BlobSolutions\VcrAm\Input\RegisterPrepaymentInput;
 use BlobSolutions\VcrAm\Input\RegisterPrepaymentRefundInput;
 use BlobSolutions\VcrAm\Input\RegisterSaleInput;
 use BlobSolutions\VcrAm\Input\RegisterSaleRefundInput;
 use BlobSolutions\VcrAm\Model\CashierListItem;
+use BlobSolutions\VcrAm\Model\ClassifierSearchItem;
 use BlobSolutions\VcrAm\Model\CreateCashierResponse;
 use BlobSolutions\VcrAm\Model\CreateDepartmentResponse;
+use BlobSolutions\VcrAm\Model\CreateOfferResponse;
 use BlobSolutions\VcrAm\Model\PrepaymentDetail;
 use BlobSolutions\VcrAm\Model\RegisterPrepaymentRefundResponse;
 use BlobSolutions\VcrAm\Model\RegisterPrepaymentResponse;
@@ -270,6 +273,72 @@ final class VcrClient
     }
 
     /**
+     * Creates a new offer (product or service) on the account.
+     *
+     * Distinct from referencing an offer inline inside a sale item via
+     * {@see Input\Offer::createNew()}: that's a
+     * convenience for "register the sale and the offer in one call",
+     * while this endpoint creates a standalone catalogue entry.
+     *
+     * @throws VcrApiException
+     * @throws VcrNetworkException
+     * @throws VcrValidationException
+     */
+    public function createOffer(CreateOfferInput $input): CreateOfferResponse
+    {
+        /** @var CreateOfferResponse $result */
+        $result = $this->request(
+            'POST',
+            '/offers',
+            CreateOfferResponse::class,
+            $input->jsonSerialize(),
+        );
+
+        return $result;
+    }
+
+    /**
+     * Searches the SRC classifier (product/service taxonomy) for entries
+     * matching `$query` in the given language. Returns at most a handful
+     * of fuzzy-matched items — typically used to populate an offer-creation
+     * autocomplete in a UI.
+     *
+     * @return list<ClassifierSearchItem>
+     *
+     * @throws InvalidArgumentException When `$query` is empty, or when
+     *                                  `$language` is {@see Language::Multi}
+     *                                  (the search index has no Multi entries)
+     * @throws VcrApiException
+     * @throws VcrNetworkException
+     * @throws VcrValidationException
+     */
+    public function searchClassifier(string $query, OfferType $type, Language $language): array
+    {
+        if (trim($query) === '') {
+            throw new InvalidArgumentException('query must not be empty.');
+        }
+
+        if ($language === Language::Multi) {
+            throw new InvalidArgumentException('language must be a concrete language (hy/ru/en); Multi is not searchable.');
+        }
+
+        /** @var list<ClassifierSearchItem> $result */
+        $result = $this->request(
+            'GET',
+            '/searchByClassifier',
+            'list<' . ClassifierSearchItem::class . '>',
+            null,
+            [
+                'query' => $query,
+                'type' => $type->value,
+                'language' => $language->value,
+            ],
+        );
+
+        return $result;
+    }
+
+    /**
      * Reads back the full detail of a previously-registered sale.
      *
      * @param int $saleId The numeric sale id returned by
@@ -301,10 +370,11 @@ final class VcrClient
      * onto the type described by `$signature` (a Valinor type DSL string,
      * e.g. `list<Foo>`, `array{id: int, name: string}`, or a class-string).
      *
-     * @param non-empty-string                $method
-     * @param non-empty-string                $path      Path relative to {@see $baseUrl}, beginning with `/`
-     * @param non-empty-string                $signature Valinor type signature
-     * @param array<string, mixed>|list<mixed>|null $jsonBody Body for POST/PUT requests, encoded as JSON
+     * @param non-empty-string                       $method
+     * @param non-empty-string                       $path      Path relative to {@see $baseUrl}, beginning with `/`
+     * @param non-empty-string                       $signature Valinor type signature
+     * @param array<string, mixed>|list<mixed>|null  $jsonBody  Body for POST/PUT requests, encoded as JSON
+     * @param ?array<string, string>                 $query     Query string parameters, RFC 3986-encoded
      *
      * @return mixed The mapped value (caller narrows via `@var` or `@return T`)
      *
@@ -317,8 +387,9 @@ final class VcrClient
         string $path,
         string $signature,
         ?array $jsonBody = null,
+        ?array $query = null,
     ): mixed {
-        $request = $this->buildRequest($method, $path, $jsonBody);
+        $request = $this->buildRequest($method, $path, $jsonBody, $query);
 
         $this->logger->debug('VCR.AM request', [
             'method' => $method,
@@ -399,10 +470,18 @@ final class VcrClient
      * @param non-empty-string                       $method
      * @param non-empty-string                       $path
      * @param array<string, mixed>|list<mixed>|null  $jsonBody
+     * @param ?array<string, string>                 $query
      */
-    private function buildRequest(string $method, string $path, ?array $jsonBody): RequestInterface
+    private function buildRequest(string $method, string $path, ?array $jsonBody, ?array $query = null): RequestInterface
     {
         $url = $this->baseUrl . $path;
+
+        if ($query !== null && $query !== []) {
+            // Internal paths never carry their own query string, so unconditionally
+            // prepend `?`. RFC 3986 encoding makes UTF-8 query values (e.g.
+            // Armenian) round-trip cleanly through the API.
+            $url .= '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
+        }
 
         $request = $this->requestFactory->createRequest($method, $url)
             ->withHeader('Authorization', 'Bearer ' . $this->apiKey)
