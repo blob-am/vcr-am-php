@@ -11,7 +11,9 @@ A native sibling to the [TypeScript SDK](https://github.com/blob-am/vcr-am-sdk).
 
 ## Status
 
-> **Pre-release.** API is being developed in lockstep with the TypeScript SDK. While the package is on `0.x`, every minor release may introduce breaking changes — pin tightly until `1.0`.
+> **Pre-release.** API is being developed in lockstep with the TypeScript SDK. While the package is on `0.x`, every minor release may introduce breaking changes — pin tightly until `1.0`. See [CHANGELOG.md](CHANGELOG.md) for release notes.
+
+> ⚠️ **Do not use v0.1.0.** The very first release shipped with the wrong auth header and is rejected by every production request. Pin `^0.1.1` or later.
 
 ## Requirements
 
