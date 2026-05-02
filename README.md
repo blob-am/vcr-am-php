@@ -328,7 +328,7 @@ try {
     // $e->apiErrorCode     — SRC error code (string|null), e.g. 'INVALID_TIN'
     // $e->apiErrorMessage  — human-readable detail (string|null)
     // $e->rawBody          — full response body, in case envelope parsing failed
-    // $e->request          — PSR-7 request (Authorization header redacted)
+    // $e->request          — PSR-7 request (X-API-Key header redacted)
     // $e->response         — PSR-7 response
     if ($e->statusCode === 422 && $e->apiErrorCode === 'INVALID_TIN') {
         // Surface a friendly message to the cashier UI
@@ -338,7 +338,7 @@ try {
 } catch (VcrNetworkException $e) {
     // DNS / TLS / TCP / timeout failure before any HTTP response.
     // $e->getPrevious() is the underlying PSR-18 ClientExceptionInterface.
-    // $e->request — PSR-7 request (Authorization redacted)
+    // $e->request — PSR-7 request (X-API-Key redacted)
     // Safe to retry after a backoff, but be careful with non-idempotent endpoints.
     throw $e;
 } catch (VcrValidationException $e) {
@@ -351,7 +351,7 @@ try {
 }
 ```
 
-The `Authorization: Bearer <key>` header is stripped from the request preserved on every exception. APMs that auto-serialize exception state (Sentry, Bugsnag, Laravel's verbose handler) will not surface the bearer token in their breadcrumbs.
+The `X-API-Key` header is stripped from the request preserved on every exception. APMs that auto-serialize exception state (Sentry, Bugsnag, Laravel's verbose handler) will not surface the API key in their breadcrumbs.
 
 ## Configuration
 
@@ -390,7 +390,7 @@ Channels emitted:
 | `warning` | `VCR.AM network failure` | `method`, `url`, `error` |
 | `warning` | `VCR.AM API error` | `method`, `url`, `status`, `errorCode`, `errorMessage`, `rawBodyPreview` (≤500 bytes) |
 
-The Authorization header is never logged.
+The X-API-Key header is never logged.
 
 ### PSR-18 HTTP client
 

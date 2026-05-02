@@ -50,7 +50,7 @@ final class VcrClient
 {
     public const DEFAULT_BASE_URL = 'https://vcr.am/api/v1';
 
-    public const VERSION = '0.1.0';
+    public const VERSION = '0.1.1';
 
     /**
      * Cap on how many bytes of an error response body are included in the
@@ -470,11 +470,11 @@ final class VcrClient
      * Strips secret-bearing headers from the request before it gets attached
      * to a public-facing exception. APMs and loggers that introspect
      * exception state (Sentry, Bugsnag, Laravel's verbose handler) routinely
-     * dump request headers — we don't want the bearer token in those breadcrumbs.
+     * dump request headers — we don't want the API key in those breadcrumbs.
      */
     private function redactRequest(RequestInterface $request): RequestInterface
     {
-        return $request->withoutHeader('Authorization');
+        return $request->withoutHeader('X-API-Key');
     }
 
     /**
@@ -495,7 +495,7 @@ final class VcrClient
         }
 
         $request = $this->requestFactory->createRequest($method, $url)
-            ->withHeader('Authorization', 'Bearer ' . $this->apiKey)
+            ->withHeader('X-API-Key', $this->apiKey)
             ->withHeader('Accept', 'application/json')
             ->withHeader('User-Agent', sprintf('vcr-am-sdk-php/%s (+https://github.com/blob-am/vcr-am-sdk-php)', self::VERSION));
 

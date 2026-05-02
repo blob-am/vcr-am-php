@@ -175,7 +175,7 @@ it('sends a GET request to /sales/{id} with the bearer token', function (): void
 
     expect($request->getMethod())->toBe('GET')
         ->and((string) $request->getUri())->toBe('https://vcr.am/api/v1/sales/4711')
-        ->and($request->getHeaderLine('Authorization'))->toBe('Bearer test-key');
+        ->and($request->getHeaderLine('X-API-Key'))->toBe('test-key');
 });
 
 it('rejects a negative saleId', function (): void {

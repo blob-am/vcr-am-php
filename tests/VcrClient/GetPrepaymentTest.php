@@ -107,7 +107,7 @@ it('sends a GET request to /prepayments/{id} with the bearer token', function ()
 
     expect($request->getMethod())->toBe('GET')
         ->and((string) $request->getUri())->toBe('https://vcr.am/api/v1/prepayments/9001')
-        ->and($request->getHeaderLine('Authorization'))->toBe('Bearer test-key');
+        ->and($request->getHeaderLine('X-API-Key'))->toBe('test-key');
 });
 
 it('rejects a negative prepaymentId', function (): void {

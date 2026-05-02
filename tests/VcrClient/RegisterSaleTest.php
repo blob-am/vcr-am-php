@@ -77,7 +77,7 @@ it('sends a POST request to /sales with the JSON-encoded input', function (): vo
 
     expect($request->getMethod())->toBe('POST')
         ->and((string) $request->getUri())->toBe('https://vcr.am/api/v1/sales')
-        ->and($request->getHeaderLine('Authorization'))->toBe('Bearer test-key')
+        ->and($request->getHeaderLine('X-API-Key'))->toBe('test-key')
         ->and($request->getHeaderLine('Content-Type'))->toBe('application/json');
 
     $sentBody = json_decode((string) $request->getBody(), associative: true, flags: JSON_THROW_ON_ERROR);
