@@ -9,8 +9,8 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    name: Create GitHub Release
+  github-release:
+    name: GitHub Release on monorepo
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -22,3 +22,87 @@ jobs:
         with:
           generate_release_notes: true
           fail_on_unmatched_files: false
+
+  split-sdk:
+    name: Mirror packages/sdk → blob-am/vcr-am-sdk
+    runs-on: ubuntu-latest
+    needs: github-release
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Split to mirror
+        uses: danharrin/monorepo-split-github-action@v2.4.4
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIRROR_PUSH_TOKEN }}
+        with:
+          tag: ${{ github.ref_name }}
+          package_directory: 'packages/sdk'
+          repository_organization: 'blob-am'
+          repository_name: 'vcr-am-sdk'
+          user_name: 'blob-am-bot'
+          user_email: 'support@blob.am'
+
+  split-laravel:
+    name: Mirror packages/laravel → blob-am/laravel-vcr-am
+    runs-on: ubuntu-latest
+    needs: github-release
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Sanitize Laravel composer.json for the mirror
+        # The monorepo's packages/laravel/composer.json carries dev-only knobs
+        # so local laravel tests resolve against the in-tree SDK:
+        #   - "repositories" with a path repo pointing at ../sdk
+        #   - "minimum-stability": "dev"  (lets dev-main resolve)
+        #   - "prefer-stable": true
+        #   - "blob-solutions/vcr-am-sdk": "^0.1 || dev-main" (allows path dev)
+        #
+        # End users installing the mirror only see Packagist; a path repo
+        # whose target does not exist makes `composer install` HARD ERROR
+        # ("The url supplied for the path (../sdk) repository does not
+        # exist"). Empirically verified — not a hypothetical.
+        #
+        # Strip the dev-only fields and pin the SDK constraint to a clean
+        # caret on the synced major.minor of this release. Then amend the
+        # tag commit so splitsh picks up the sanitised state.
+        run: |
+          set -euo pipefail
+
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          MAJOR_MINOR="$(echo "$VERSION" | cut -d. -f1-2)"
+          SDK_CONSTRAINT="^${MAJOR_MINOR}.0"
+
+          tmp="$(mktemp)"
+          jq --arg c "$SDK_CONSTRAINT" '
+              del(.repositories)
+              | del(."minimum-stability")
+              | del(."prefer-stable")
+              | .require."blob-solutions/vcr-am-sdk" = $c
+          ' packages/laravel/composer.json > "$tmp"
+          mv "$tmp" packages/laravel/composer.json
+
+          git config user.email "support@blob.am"
+          git config user.name "blob-am-bot"
+          git add packages/laravel/composer.json
+          git commit --amend --no-edit
+
+          # Move the tag to the amended commit so danharrin/split picks it up.
+          git tag -d "$TAG"
+          git tag "$TAG" HEAD
+
+      - name: Split to mirror
+        uses: danharrin/monorepo-split-github-action@v2.4.4
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIRROR_PUSH_TOKEN }}
+        with:
+          tag: ${{ github.ref_name }}
+          package_directory: 'packages/laravel'
+          repository_organization: 'blob-am'
+          repository_name: 'laravel-vcr-am'
+          user_name: 'blob-am-bot'
+          user_email: 'support@blob.am'

@@ -56,11 +56,17 @@ All packages share a single version tag. A `v0.5.2` tag in this repo produces a 
 
 ## Releasing
 
-1. Tag the monorepo: `git tag v0.X.Y && git push origin v0.X.Y`
-2. The `release.yml` workflow runs `splitsh/lite` per package, pushes the subtree to its mirror repo, and re-tags the mirror.
-3. Packagist webhooks pick up the new tag automatically.
+```bash
+git tag v0.X.Y && git push origin v0.X.Y
+```
 
-See [`docs/releasing.md`](docs/releasing.md) for the full procedure (added with Phase 3).
+The [`release.yml`](.github/workflows/release.yml) workflow then:
+1. Creates a GitHub release on the monorepo with auto-generated notes.
+2. Mirrors `packages/sdk/` → [`blob-am/vcr-am-sdk`](https://github.com/blob-am/vcr-am-sdk).
+3. Sanitises and mirrors `packages/laravel/` → [`blob-am/laravel-vcr-am`](https://github.com/blob-am/laravel-vcr-am) (strips dev-only path repo + stability flags).
+4. Re-tags both mirrors so Packagist webhooks publish automatically.
+
+See [`docs/releasing.md`](docs/releasing.md) for one-time mirror/PAT setup, sync versioning rationale, and yank/troubleshooting recipes.
 
 ## License
 
