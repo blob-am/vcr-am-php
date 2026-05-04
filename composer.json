@@ -1,89 +1,23 @@
 {
-    "name": "blob-solutions/vcr-am-sdk",
-    "description": "Official PHP SDK for the VCR.AM Virtual Cash Register API — fiscalize sales, refunds, and prepayments through Armenia's State Revenue Committee.",
-    "type": "library",
+    "name": "blob-solutions/vcr-am-monorepo",
+    "description": "VCR.AM PHP monorepo — framework-agnostic SDK plus framework adapters (Laravel today, Symfony/WooCommerce/Bitrix later). This composer.json is a development orchestrator and is not published.",
+    "type": "project",
     "license": "ISC",
-    "keywords": [
-        "vcr",
-        "vcr-am",
-        "armenia",
-        "armenian",
-        "cash-register",
-        "virtual-cash-register",
-        "fiscalization",
-        "src",
-        "tax-service",
-        "e-receipt",
-        "fiscal",
-        "blob-solutions",
-        "php",
-        "sdk"
-    ],
     "homepage": "https://vcr.am",
     "support": {
         "issues": "https://github.com/blob-am/vcr-am-sdk-php/issues",
         "source": "https://github.com/blob-am/vcr-am-sdk-php"
     },
-    "authors": [
-        {
-            "name": "Alex Kraiz",
-            "email": "support@blob.am",
-            "homepage": "https://blob.am",
-            "role": "Maintainer"
-        }
-    ],
     "require": {
-        "php": "^8.2",
-        "ext-json": "*",
-        "ext-mbstring": "*",
-        "cuyz/valinor": "^2.4",
-        "guzzlehttp/guzzle": "^7.10",
-        "nyholm/psr7": "^1.8",
-        "php-http/discovery": "^1.20",
-        "psr/http-client": "^1.0",
-        "psr/http-factory": "^1.1",
-        "psr/http-message": "^2.0",
-        "psr/log": "^3.0"
-    },
-    "require-dev": {
-        "laravel/pint": "^1.29",
-        "pestphp/pest": "^3.7",
-        "pestphp/pest-plugin-type-coverage": "^3.5",
-        "php-http/mock-client": "^1.6",
-        "phpstan/phpstan": "^2.1",
-        "phpstan/phpstan-deprecation-rules": "^2.0",
-        "phpstan/phpstan-phpunit": "^2.0",
-        "phpstan/phpstan-strict-rules": "^2.0"
-    },
-    "autoload": {
-        "psr-4": {
-            "BlobSolutions\\VcrAm\\": "src/"
-        }
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "BlobSolutions\\VcrAm\\Tests\\": "tests/"
-        }
-    },
-    "config": {
-        "sort-packages": true,
-        "allow-plugins": {
-            "pestphp/pest-plugin": true,
-            "php-http/discovery": true
-        }
-    },
-    "extra": {
-        "branch-alias": {
-            "dev-main": "0.x-dev"
-        }
+        "php": "^8.2"
     },
     "scripts": {
-        "test": "pest --colors=always",
-        "test:coverage": "pest --coverage --min=100 --colors=always",
-        "test:type-coverage": "pest --type-coverage --min=100 --colors=always",
-        "phpstan": "phpstan analyse --no-progress",
-        "format": "pint",
-        "format:check": "pint --test",
+        "install:all": "bin/each install",
+        "update:all": "bin/each update",
+        "test": "bin/each test",
+        "phpstan": "bin/each phpstan",
+        "format": "bin/each format",
+        "format:check": "bin/each format:check",
         "check": [
             "@format:check",
             "@phpstan",
@@ -91,13 +25,13 @@
         ]
     },
     "scripts-descriptions": {
-        "test": "Run Pest test suite",
-        "test:coverage": "Run tests with line coverage report (enforces 100%; requires xdebug or pcov locally)",
-        "test:type-coverage": "Run Pest type coverage check (must be 100%)",
-        "phpstan": "Run static analysis at level max + strict + deprecation rules",
-        "format": "Apply Pint code style fixes",
-        "format:check": "Verify code style without writing changes",
-        "check": "Run the full local CI pipeline (format + phpstan + test)"
+        "install:all": "Run `composer install` in every package",
+        "update:all": "Run `composer update` in every package",
+        "test": "Run pest in every package",
+        "phpstan": "Run phpstan in every package",
+        "format": "Run pint in every package",
+        "format:check": "Verify pint style in every package",
+        "check": "Run the full local CI gate (format + phpstan + test) across every package"
     },
     "minimum-stability": "stable",
     "prefer-stable": true

@@ -1,5 +1,5 @@
-# Composer
-/vendor/
+# Composer (vendor/ matches at any depth — root and per-package)
+vendor/
 composer.lock
 
 # PHP tooling caches

@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+#
+# Run a composer script (or any composer command) in every package.
+# Stops on first failure.
+#
+# Usage: bin/each <composer-script> [args...]
+#
+# Examples:
+#   bin/each install
+#   bin/each test
+#   bin/each check
+
+set -euo pipefail
+
+if [[ $# -lt 1 ]]; then
+    echo "Usage: bin/each <composer-script> [args...]" >&2
+    exit 64
+fi
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+shopt -s nullglob
+packages=("$ROOT"/packages/*/)
+shopt -u nullglob
+
+if [[ ${#packages[@]} -eq 0 ]]; then
+    echo "No packages found in $ROOT/packages/" >&2
+    exit 1
+fi
+
+for pkg in "${packages[@]}"; do
+    name="$(basename "$pkg")"
+    echo "== $name =="
+    (cd "$pkg" && composer "$@")
+done

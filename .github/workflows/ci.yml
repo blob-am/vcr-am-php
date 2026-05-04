@@ -10,9 +10,12 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    name: PHP ${{ matrix.php }}
+  sdk:
+    name: SDK / PHP ${{ matrix.php }}
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/sdk
     strategy:
       fail-fast: false
       matrix:
@@ -40,9 +43,9 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
-          key: ${{ runner.os }}-php${{ matrix.php }}-${{ hashFiles('**/composer.json') }}
+          key: ${{ runner.os }}-php${{ matrix.php }}-sdk-${{ hashFiles('packages/sdk/composer.json') }}
           restore-keys: |
-            ${{ runner.os }}-php${{ matrix.php }}-
+            ${{ runner.os }}-php${{ matrix.php }}-sdk-
 
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress --no-interaction
