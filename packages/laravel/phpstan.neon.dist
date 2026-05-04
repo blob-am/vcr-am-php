@@ -1,0 +1,26 @@
+parameters:
+    level: max
+    paths:
+        - src
+    # tests/ is intentionally excluded — Pest binds `$this` in `it()` closures
+    # at runtime to the configured TestCase, but PHPStan cannot follow that
+    # binding without ad-hoc @var hints in every closure. Test correctness is
+    # enforced by Pest itself (a failing test = a failing build); static
+    # analysis on src/ catches the bugs that matter.
+    treatPhpDocTypesAsCertain: false
+    reportUnmatchedIgnoredErrors: true
+    reportPossiblyNonexistentGeneralArrayOffset: true
+    reportPossiblyNonexistentConstantArrayOffset: true
+    reportAlwaysTrueInLastCondition: true
+    checkBenevolentUnionTypes: true
+    checkImplicitMixed: true
+    checkMissingCallableSignature: true
+    tmpDir: .phpstan.cache
+
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - vendor/pestphp/pest/extension.neon
+    - vendor/phpstan/phpstan-strict-rules/rules.neon
+    - vendor/phpstan/phpstan-deprecation-rules/rules.neon
+    - vendor/phpstan/phpstan-phpunit/extension.neon
+    - vendor/phpstan/phpstan-phpunit/rules.neon

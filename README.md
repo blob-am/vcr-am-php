@@ -7,7 +7,7 @@ This repository hosts the PHP-side of the [VCR.AM](https://vcr.am) Virtual Cash 
 | Package | Composer name | Status |
 | --- | --- | --- |
 | [`packages/sdk`](packages/sdk) | [`blob-solutions/vcr-am-sdk`](https://packagist.org/packages/blob-solutions/vcr-am-sdk) | Released (`0.x`) — framework-agnostic SDK. PSR-3, PSR-17, PSR-18. |
-| [`packages/laravel`](packages/laravel) | `blob-solutions/laravel-vcr-am` | Planned — Laravel adapter (ServiceProvider, Facade, config, Artisan). |
+| [`packages/laravel`](packages/laravel) | `blob-solutions/laravel-vcr-am` | Pre-release — thin Laravel adapter (ServiceProvider, Facade, config, Artisan). Tagged & published from Phase 4 onwards. |
 
 Each package is published to Packagist independently from a read-only mirror repository (split out of this monorepo on every tag). End users `composer require` packages directly — they never need to clone this monorepo.
 

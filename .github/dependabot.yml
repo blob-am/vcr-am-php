@@ -20,6 +20,26 @@ updates:
           - "phpstan/*"
           - "laravel/pint"
 
+  - package-ecosystem: composer
+    directory: "/packages/laravel"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    versioning-strategy: increase
+    groups:
+      laravel:
+        patterns:
+          - "illuminate/*"
+          - "orchestra/*"
+          - "spatie/laravel-package-tools"
+      dev-tools:
+        dependency-type: development
+        patterns:
+          - "pestphp/*"
+          - "phpstan/*"
+          - "larastan/*"
+          - "laravel/pint"
+
   - package-ecosystem: github-actions
     directory: "/"
     schedule:

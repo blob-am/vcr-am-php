@@ -66,3 +66,66 @@ jobs:
       - name: Line coverage (must hit 100%)
         if: matrix.php == '8.5'
         run: vendor/bin/pest --coverage --min=100 --colors=always
+
+  laravel:
+    name: Laravel / PHP ${{ matrix.php }} / Testbench ${{ matrix.testbench }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/laravel
+    strategy:
+      fail-fast: false
+      matrix:
+        # Testbench version pins Laravel: ^9.x => Laravel 11, ^10.x => Laravel 12.
+        # PHP 8.2 is the floor (matches the SDK + Laravel 11 minimum).
+        php: ['8.2', '8.3', '8.4']
+        testbench: ['^9.0', '^10.0']
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, json
+          coverage: xdebug
+          tools: composer:v2
+
+      - name: Validate composer.json
+        run: composer validate --strict --no-check-publish
+
+      - name: Get composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer packages
+        uses: actions/cache@v5
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-php${{ matrix.php }}-laravel-tb${{ matrix.testbench }}-${{ hashFiles('packages/laravel/composer.json') }}
+          restore-keys: |
+            ${{ runner.os }}-php${{ matrix.php }}-laravel-tb${{ matrix.testbench }}-
+
+      - name: Pin testbench version
+        run: composer require "orchestra/testbench:${{ matrix.testbench }}" --dev --no-update --no-interaction
+
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-progress --no-interaction
+
+      - name: Code style (Pint)
+        run: vendor/bin/pint --test
+
+      - name: Static analysis (PHPStan)
+        run: vendor/bin/phpstan analyse --no-progress --error-format=github --memory-limit=1G
+
+      - name: Tests (Pest)
+        run: vendor/bin/pest --colors=always
+
+      - name: Type coverage
+        if: matrix.php == '8.4' && matrix.testbench == '^10.0'
+        run: vendor/bin/pest --type-coverage --min=100 --colors=always
+
+      - name: Line coverage (must hit 100%)
+        if: matrix.php == '8.4' && matrix.testbench == '^10.0'
+        run: vendor/bin/pest --coverage --min=100 --colors=always
