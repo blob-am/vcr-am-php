@@ -2,6 +2,25 @@
 
 All notable changes to this package will be documented in this file.
 
+## [0.2.0] — 2026-05-04
+
+### Changed
+
+- **No functional API changes.** This release synchronises with the first
+  release of the sibling [`blob-solutions/laravel-vcr-am`](https://packagist.org/packages/blob-solutions/laravel-vcr-am)
+  Laravel adapter under the project's sync-versioning policy: every tag
+  bumps every published package to the same version, even ones whose
+  source did not change. See [`docs/releasing.md`](https://github.com/blob-am/vcr-am-php/blob/main/docs/releasing.md#versioning).
+
+### Internal
+
+- Source repository restructured into a monorepo at [`blob-am/vcr-am-php`](https://github.com/blob-am/vcr-am-php).
+  The Composer package is now mirrored from `packages/sdk/` to the
+  read-only repository [`blob-am/vcr-am-sdk-php`](https://github.com/blob-am/vcr-am-sdk-php)
+  on every release tag via `splitsh`. End users see no difference —
+  `composer require blob-solutions/vcr-am-sdk` resolves and installs
+  identically to `0.1.x`.
+
 ## [0.1.1] — 2026-05-02
 
 ### Fixed
