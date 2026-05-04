@@ -22,7 +22,7 @@
     ],
     "homepage": "https://vcr.am",
     "support": {
-        "issues": "https://github.com/blob-am/vcr-am-sdk-php/issues",
+        "issues": "https://github.com/blob-am/vcr-am-php/issues",
         "source": "https://github.com/blob-am/laravel-vcr-am"
     },
     "authors": [

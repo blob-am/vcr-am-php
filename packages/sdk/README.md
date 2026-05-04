@@ -3,7 +3,7 @@
 [![Packagist Version](https://img.shields.io/packagist/v/blob-solutions/vcr-am-sdk.svg)](https://packagist.org/packages/blob-solutions/vcr-am-sdk)
 [![PHP Version Require](https://img.shields.io/packagist/dependency-v/blob-solutions/vcr-am-sdk/php)](https://packagist.org/packages/blob-solutions/vcr-am-sdk)
 [![License](https://img.shields.io/packagist/l/blob-solutions/vcr-am-sdk.svg)](LICENSE)
-[![CI](https://github.com/blob-am/vcr-am-sdk-php/actions/workflows/ci.yml/badge.svg)](https://github.com/blob-am/vcr-am-sdk-php/actions/workflows/ci.yml)
+[![CI](https://github.com/blob-am/vcr-am-php/actions/workflows/ci.yml/badge.svg)](https://github.com/blob-am/vcr-am-php/actions/workflows/ci.yml)
 
 Official PHP SDK for the [VCR.AM](https://vcr.am) Virtual Cash Register API. Fiscalize sales, refunds, and prepayments through Armenia's State Revenue Committee — without touching XML, PSR-7, or wire-format quirks.
 

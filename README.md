@@ -26,7 +26,7 @@ The pattern follows Symfony's and Laravel's monorepo layouts: source lives here,
 ├── bin/each                ← run `composer <cmd>` in every package
 ├── composer.json           ← orchestrator (not published)
 ├── packages/
-│   ├── sdk/                → mirror: blob-am/vcr-am-sdk          → blob-solutions/vcr-am-sdk
+│   ├── sdk/                → mirror: blob-am/vcr-am-sdk-php      → blob-solutions/vcr-am-sdk
 │   └── laravel/            → mirror: blob-am/laravel-vcr-am      → blob-solutions/laravel-vcr-am
 └── .github/workflows/
     ├── ci.yml              ← matrix tests for every package
@@ -62,7 +62,7 @@ git tag v0.X.Y && git push origin v0.X.Y
 
 The [`release.yml`](.github/workflows/release.yml) workflow then:
 1. Creates a GitHub release on the monorepo with auto-generated notes.
-2. Mirrors `packages/sdk/` → [`blob-am/vcr-am-sdk`](https://github.com/blob-am/vcr-am-sdk).
+2. Mirrors `packages/sdk/` → [`blob-am/vcr-am-sdk-php`](https://github.com/blob-am/vcr-am-sdk-php).
 3. Sanitises and mirrors `packages/laravel/` → [`blob-am/laravel-vcr-am`](https://github.com/blob-am/laravel-vcr-am) (strips dev-only path repo + stability flags).
 4. Re-tags both mirrors so Packagist webhooks publish automatically.
 

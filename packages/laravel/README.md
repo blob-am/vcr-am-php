@@ -3,7 +3,7 @@
 [![Packagist Version](https://img.shields.io/packagist/v/blob-solutions/laravel-vcr-am.svg)](https://packagist.org/packages/blob-solutions/laravel-vcr-am)
 [![PHP Version Require](https://img.shields.io/packagist/dependency-v/blob-solutions/laravel-vcr-am/php)](https://packagist.org/packages/blob-solutions/laravel-vcr-am)
 [![License](https://img.shields.io/packagist/l/blob-solutions/laravel-vcr-am.svg)](LICENSE)
-[![CI](https://github.com/blob-am/vcr-am-sdk-php/actions/workflows/ci.yml/badge.svg)](https://github.com/blob-am/vcr-am-sdk-php/actions/workflows/ci.yml)
+[![CI](https://github.com/blob-am/vcr-am-php/actions/workflows/ci.yml/badge.svg)](https://github.com/blob-am/vcr-am-php/actions/workflows/ci.yml)
 
 A thin Laravel adapter around [`blob-solutions/vcr-am-sdk`](https://packagist.org/packages/blob-solutions/vcr-am-sdk). Wires the SDK's `VcrClient` into Laravel's container, publishes a config file, exposes a facade, and registers an Artisan health-check command.
 
@@ -130,7 +130,7 @@ The adapter detects this binding and passes it into the SDK constructor.
 
 ## Documentation for SDK methods
 
-See the [SDK README](https://github.com/blob-am/vcr-am-sdk) for every endpoint, every input DTO, and every response type. The Laravel adapter is a 1:1 wrapper — anything documented for `VcrClient` works through the facade or container binding.
+See the [SDK README](https://github.com/blob-am/vcr-am-sdk-php) for every endpoint, every input DTO, and every response type. The Laravel adapter is a 1:1 wrapper — anything documented for `VcrClient` works through the facade or container binding.
 
 ## Status
 
@@ -138,4 +138,4 @@ See the [SDK README](https://github.com/blob-am/vcr-am-sdk) for every endpoint, 
 
 ## License
 
-[ISC](https://github.com/blob-am/vcr-am-sdk-php/blob/main/LICENSE)
+[ISC](LICENSE)

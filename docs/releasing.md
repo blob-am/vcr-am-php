@@ -1,6 +1,6 @@
 # Releasing
 
-This monorepo publishes two Composer packages — `blob-solutions/vcr-am-sdk` and `blob-solutions/laravel-vcr-am` — by mirroring `packages/sdk/` and `packages/laravel/` to two read-only repositories on tag push. The mirrors are what Packagist consumes; end users never clone this monorepo.
+This monorepo (`blob-am/vcr-am-php`) publishes two Composer packages — `blob-solutions/vcr-am-sdk` and `blob-solutions/laravel-vcr-am` — by mirroring `packages/sdk/` and `packages/laravel/` to two read-only repositories on tag push. The mirrors are what Packagist consumes; end users never clone this monorepo.
 
 ## TL;DR
 
@@ -16,8 +16,17 @@ Both packages get a synchronous v0.X.Y release. Packagist auto-updates within se
 Tag push (`v*`) on `main` triggers [`.github/workflows/release.yml`](../.github/workflows/release.yml):
 
 1. **`github-release`** — creates a release on the monorepo with auto-generated notes from PR titles.
-2. **`split-sdk`** — mirrors `packages/sdk/` → [`blob-am/vcr-am-sdk`](https://github.com/blob-am/vcr-am-sdk) using [`danharrin/monorepo-split-github-action`](https://github.com/danharrin/monorepo-split-github-action). Pushes both the subtree commits and the same tag.
+2. **`split-sdk`** — mirrors `packages/sdk/` → [`blob-am/vcr-am-sdk-php`](https://github.com/blob-am/vcr-am-sdk-php) using [`danharrin/monorepo-split-github-action`](https://github.com/danharrin/monorepo-split-github-action). Pushes both the subtree commits and the same tag.
 3. **`split-laravel`** — mirrors `packages/laravel/` → [`blob-am/laravel-vcr-am`](https://github.com/blob-am/laravel-vcr-am). Same as `split-sdk` but with a **sanitisation step** first.
+
+### Repository naming
+
+| Role | GitHub repo | Composer package |
+| --- | --- | --- |
+| Monorepo (source of truth) | `blob-am/vcr-am-php` | — (orchestrator, not published) |
+| PHP SDK mirror | `blob-am/vcr-am-sdk-php` | `blob-solutions/vcr-am-sdk` |
+| Laravel adapter mirror | `blob-am/laravel-vcr-am` | `blob-solutions/laravel-vcr-am` |
+| (sibling) TypeScript SDK | `blob-am/vcr-am-sdk` | `@blob-solutions/vcr-am-sdk` (npm) |
 
 ### Why Laravel needs sanitisation
 
@@ -48,28 +57,33 @@ The amend is local to the GitHub Actions runner — it never reaches the monorep
 
 ## One-time setup
 
-Before the **first** tag push, complete these three steps. Skipping any of them makes the release workflow fail.
+Before the **first** tag push, complete these steps. Skipping any of them makes the release workflow fail.
 
-### 1. Create the two mirror repositories on GitHub
+### 1. Mirror repositories — already created
 
-Both must exist as **empty** GitHub repos under the `blob-am` organisation:
+Both mirror repos exist as empty public repos under the `blob-am` organisation:
 
-- `blob-am/vcr-am-sdk` — public, ISC licence, no README/`.gitignore` (splitsh will populate from monorepo content)
-- `blob-am/laravel-vcr-am` — public, ISC licence, no initial files
+- [`blob-am/vcr-am-sdk-php`](https://github.com/blob-am/vcr-am-sdk-php) — PHP SDK mirror
+- [`blob-am/laravel-vcr-am`](https://github.com/blob-am/laravel-vcr-am) — Laravel adapter mirror
+
+Created during Phase 4 of the monorepo migration. If they ever need recreating:
 
 ```bash
-# With the gh CLI:
-gh repo create blob-am/vcr-am-sdk --public --description "Official PHP SDK for the VCR.AM Virtual Cash Register API"
-gh repo create blob-am/laravel-vcr-am --public --description "Official Laravel adapter for blob-solutions/vcr-am-sdk"
+gh repo create blob-am/vcr-am-sdk-php --public \
+  --description "Read-only Composer mirror of packages/sdk/ from blob-am/vcr-am-php" \
+  --homepage "https://vcr.am"
+gh repo create blob-am/laravel-vcr-am --public \
+  --description "Read-only Composer mirror of packages/laravel/ from blob-am/vcr-am-php" \
+  --homepage "https://vcr.am"
 ```
 
 ### 2. Generate a Personal Access Token with mirror push rights
 
-The default `GITHUB_TOKEN` only has access to the workflow's own repository, so it cannot push to `blob-am/vcr-am-sdk` or `blob-am/laravel-vcr-am`.
+The default `GITHUB_TOKEN` only has access to the workflow's own repository, so it cannot push to `blob-am/vcr-am-sdk-php` or `blob-am/laravel-vcr-am`.
 
 Create a fine-grained PAT at <https://github.com/settings/tokens?type=beta> with:
 
-- **Repository access:** `blob-am/vcr-am-sdk` and `blob-am/laravel-vcr-am` (only these two)
+- **Repository access:** `blob-am/vcr-am-sdk-php` and `blob-am/laravel-vcr-am` (only these two)
 - **Permissions → Repository:** `Contents: Read and write`, `Metadata: Read-only`
 - **Expiry:** 1 year (set a calendar reminder to rotate)
 
@@ -77,7 +91,7 @@ Classic PATs work too (`repo` scope) but fine-grained is preferable.
 
 ### 3. Add the PAT as a monorepo secret
 
-In `blob-am/vcr-am-sdk-php` → Settings → Secrets and variables → Actions → New repository secret:
+In `blob-am/vcr-am-php` → Settings → Secrets and variables → Actions → New repository secret:
 
 - **Name:** `MIRROR_PUSH_TOKEN`
 - **Value:** the PAT generated above
@@ -86,7 +100,7 @@ In `blob-am/vcr-am-sdk-php` → Settings → Secrets and variables → Actions �
 
 After the **first** successful release pushes content to the mirrors:
 
-- <https://packagist.org/packages/submit> — paste `https://github.com/blob-am/vcr-am-sdk` (re-point if `blob-solutions/vcr-am-sdk` already exists from the pre-monorepo era)
+- <https://packagist.org/packages/submit> — paste `https://github.com/blob-am/vcr-am-sdk-php` (re-point if `blob-solutions/vcr-am-sdk` already exists from the pre-monorepo era)
 - <https://packagist.org/packages/submit> — paste `https://github.com/blob-am/laravel-vcr-am`
 
 Enable the GitHub webhook on each mirror (Packagist provides the URL on first submission) so subsequent tags publish automatically without manual `Update` clicks.
@@ -119,11 +133,11 @@ The Laravel adapter's `composer.json` is rewritten at release time to require `b
    git tag v0.X.Y
    git push origin v0.X.Y
    ```
-6. Watch the run in <https://github.com/blob-am/vcr-am-sdk-php/actions>.
+6. Watch the run in <https://github.com/blob-am/vcr-am-php/actions>.
 7. Verify:
    - `https://packagist.org/packages/blob-solutions/vcr-am-sdk` shows the new version
    - `https://packagist.org/packages/blob-solutions/laravel-vcr-am` shows the new version
-   - `https://github.com/blob-am/vcr-am-sdk/tags` has `v0.X.Y`
+   - `https://github.com/blob-am/vcr-am-sdk-php/tags` has `v0.X.Y`
    - `https://github.com/blob-am/laravel-vcr-am/tags` has `v0.X.Y`
 
 ## Yanking a bad release
@@ -134,7 +148,7 @@ Composer doesn't have a true "yank" — you can only mark a tag as bad on Packag
 2. On Packagist, both packages → Maintenance tab → mark `v0.X.Y` as `abandoned: blob-solutions/...:^0.X.(Y+1)` so Composer warns when resolving.
 3. Optionally delete the bad tag from the mirror repos (keeping it in the monorepo for git history):
    ```bash
-   gh api -X DELETE repos/blob-am/vcr-am-sdk/git/refs/tags/v0.X.Y
+   gh api -X DELETE repos/blob-am/vcr-am-sdk-php/git/refs/tags/v0.X.Y
    gh api -X DELETE repos/blob-am/laravel-vcr-am/git/refs/tags/v0.X.Y
    ```
    Packagist refreshes within minutes.
