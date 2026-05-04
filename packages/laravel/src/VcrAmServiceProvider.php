@@ -43,6 +43,13 @@ final class VcrAmServiceProvider extends PackageServiceProvider
                 throw new RuntimeException('VCR.AM: `vcr-am.base_url` must be a string or null.');
             }
 
+            // Treat empty / whitespace as "unset" so VCR_AM_BASE_URL= in .env
+            // falls through to the SDK default instead of producing requests
+            // against an empty host.
+            if (is_string($baseUrl) && trim($baseUrl) === '') {
+                $baseUrl = null;
+            }
+
             return new VcrClient(
                 apiKey: $apiKey,
                 baseUrl: $baseUrl ?? VcrClient::DEFAULT_BASE_URL,

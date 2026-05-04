@@ -37,9 +37,9 @@
         "php": "^8.2",
         "ext-json": "*",
         "blob-solutions/vcr-am-sdk": "^0.1 || dev-main",
-        "illuminate/console": "^11.0 || ^12.0",
-        "illuminate/contracts": "^11.0 || ^12.0",
-        "illuminate/support": "^11.0 || ^12.0",
+        "illuminate/console": "^11.0 || ^12.0 || ^13.0",
+        "illuminate/contracts": "^11.0 || ^12.0 || ^13.0",
+        "illuminate/support": "^11.0 || ^12.0 || ^13.0",
         "spatie/laravel-package-tools": "^1.16"
     },
     "require-dev": {
@@ -92,8 +92,7 @@
             "url": "../sdk",
             "options": {
                 "symlink": true
-            },
-            "canonical": false
+            }
         }
     ],
     "minimum-stability": "dev",

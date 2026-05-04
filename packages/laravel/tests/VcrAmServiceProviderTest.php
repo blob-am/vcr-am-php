@@ -40,6 +40,31 @@ it('falls back to the SDK default base url when the config value is null', funct
     expect($reflection->getProperty('baseUrl')->getValue($client))->toBe(VcrClient::DEFAULT_BASE_URL);
 });
 
+it('falls back to the SDK default base url when the config value is an empty string', function (): void {
+    // Real-world trigger: VCR_AM_BASE_URL= in .env. Laravel's env() returns ''
+    // (not null), and a literal empty baseUrl would silently break every
+    // outbound request — surface as default instead.
+    $this->app->forgetInstance(VcrClient::class);
+    config()->set('vcr-am.base_url', '');
+
+    $client = $this->app->make(VcrClient::class);
+
+    $reflection = new ReflectionObject($client);
+
+    expect($reflection->getProperty('baseUrl')->getValue($client))->toBe(VcrClient::DEFAULT_BASE_URL);
+});
+
+it('falls back to the SDK default base url when the config value is whitespace only', function (): void {
+    $this->app->forgetInstance(VcrClient::class);
+    config()->set('vcr-am.base_url', '   ');
+
+    $client = $this->app->make(VcrClient::class);
+
+    $reflection = new ReflectionObject($client);
+
+    expect($reflection->getProperty('baseUrl')->getValue($client))->toBe(VcrClient::DEFAULT_BASE_URL);
+});
+
 it('throws when the api key is missing', function (): void {
     $this->app->forgetInstance(VcrClient::class);
     config()->set('vcr-am.api_key', null);

@@ -76,9 +76,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Testbench version pins Laravel: ^9.x => Laravel 11, ^10.x => Laravel 12.
-        # PHP 8.2 is the floor (matches the SDK + Laravel 11 minimum).
-        php: ['8.2', '8.3', '8.4']
+        # Testbench version pins the Laravel major:
+        #   ^9.x  => Laravel 11 (PHP 8.2+)
+        #   ^10.x => Laravel 12 (PHP 8.2+)
+        # Laravel 13 is supported in `require` constraints but not exercised
+        # here yet — pest-plugin-laravel 3.x does not yet cover Laravel 13,
+        # and Pest 4 + PHPUnit 12 currently has discovery friction we have
+        # not unblocked. Re-add testbench `^11.0` once the Pest 4 toolchain
+        # stabilises.
+        php: ['8.2', '8.3', '8.4', '8.5']
         testbench: ['^9.0', '^10.0']
 
     steps:
@@ -111,7 +117,7 @@ jobs:
         run: composer require "orchestra/testbench:${{ matrix.testbench }}" --dev --no-update --no-interaction
 
       - name: Install dependencies
-        run: composer update --prefer-dist --no-progress --no-interaction
+        run: composer update --prefer-dist --prefer-stable --no-progress --no-interaction
 
       - name: Code style (Pint)
         run: vendor/bin/pint --test
@@ -123,9 +129,9 @@ jobs:
         run: vendor/bin/pest --colors=always
 
       - name: Type coverage
-        if: matrix.php == '8.4' && matrix.testbench == '^10.0'
+        if: matrix.php == '8.5' && matrix.testbench == '^10.0'
         run: vendor/bin/pest --type-coverage --min=100 --colors=always
 
       - name: Line coverage (must hit 100%)
-        if: matrix.php == '8.4' && matrix.testbench == '^10.0'
+        if: matrix.php == '8.5' && matrix.testbench == '^10.0'
         run: vendor/bin/pest --coverage --min=100 --colors=always
