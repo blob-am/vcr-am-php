@@ -2,6 +2,28 @@
 
 All notable changes to this package will be documented in this file.
 
+## [0.3.0] — 2026-05-04
+
+### Added
+
+- **`SaleItem.emarks`** — optional list of excise-mark identifiers consumed
+  by the line item (alcohol, tobacco, pharmaceuticals — Govt Decision
+  1976-N, effective 2026-05-01). Mirrors the field already present on
+  `RefundItemInput` and the upstream TS schema. Per-item by domain
+  design: the wire format flattens marks into a single top-level array
+  per receipt at the VCR API boundary, but the SDK preserves item-level
+  grouping so refund flows can subset codes against the original sale.
+  Constructor enforces non-empty entries; full format bounds (charset,
+  29-128 chars) live at the VCR API boundary.
+
+### Compatibility
+
+- **Backwards-compatible.** New constructor parameter is the last
+  positional argument and defaults to `null`; existing call sites
+  continue to compile and serialize identically.
+- Receipts containing no marked goods serialize without an `emarks`
+  field on each item, matching pre-0.3.0 wire output byte-for-byte.
+
 ## [0.2.0] — 2026-05-04
 
 ### Changed

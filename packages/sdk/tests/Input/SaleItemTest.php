@@ -125,3 +125,67 @@ it('rejects an empty totalAmountTolerance string when provided', function (): vo
         totalAmountTolerance: '   ',
     );
 })->throws(InvalidArgumentException::class, 'totalAmountTolerance must be a non-negative decimal string');
+
+it('serializes an item with emarks', function (): void {
+    $item = new SaleItem(
+        offer: Offer::existing('sku-1'),
+        department: new Department(1),
+        quantity: '2',
+        price: '7500',
+        unit: Unit::Bottle,
+        emarks: ['010460700818472821CIQ%a^4Q', '010460700818472821CXR<7%qK'],
+    );
+
+    expect(json_encode($item, JSON_THROW_ON_ERROR))
+        ->toBe(json_encode([
+            'offer' => ['externalId' => 'sku-1'],
+            'department' => ['id' => 1],
+            'quantity' => '2',
+            'price' => '7500',
+            'unit' => 'bottle',
+            'emarks' => ['010460700818472821CIQ%a^4Q', '010460700818472821CXR<7%qK'],
+        ], JSON_THROW_ON_ERROR));
+});
+
+it('omits the emarks field when null', function (): void {
+    $item = makeMinimalSaleItem();
+
+    expect(json_encode($item, JSON_THROW_ON_ERROR))->not->toContain('emarks');
+});
+
+it('omits the emarks field when explicitly null', function (): void {
+    $item = new SaleItem(
+        offer: Offer::existing('sku-1'),
+        department: new Department(1),
+        quantity: '1',
+        price: '100',
+        unit: Unit::Piece,
+        emarks: null,
+    );
+
+    expect(json_encode($item, JSON_THROW_ON_ERROR))->not->toContain('emarks');
+});
+
+it('serializes an empty emarks array as []', function (): void {
+    $item = new SaleItem(
+        offer: Offer::existing('sku-1'),
+        department: new Department(1),
+        quantity: '1',
+        price: '100',
+        unit: Unit::Piece,
+        emarks: [],
+    );
+
+    expect(json_encode($item, JSON_THROW_ON_ERROR))->toContain('"emarks":[]');
+});
+
+it('rejects an empty emark entry', function (): void {
+    new SaleItem(
+        offer: Offer::existing('sku-1'),
+        department: new Department(1),
+        quantity: '1',
+        price: '100',
+        unit: Unit::Piece,
+        emarks: ['VALID-CODE', '   '],
+    );
+})->throws(InvalidArgumentException::class, 'emarks entries must not be empty.');

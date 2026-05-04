@@ -2,6 +2,19 @@
 
 All notable changes to `blob-solutions/laravel-vcr-am` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] — 2026-05-04
+
+### Changed
+
+- **No functional adapter changes.** This release synchronises with
+  [`blob-solutions/vcr-am-sdk@0.3.0`](https://packagist.org/packages/blob-solutions/vcr-am-sdk),
+  which added the `SaleItem.emarks` field for excise-marked goods
+  (alcohol, tobacco, pharmaceuticals — Govt Decision 1976-N). Laravel
+  applications get the new field automatically through the SDK
+  constructor; no provider, facade, or config changes required. See the
+  [SDK CHANGELOG](https://github.com/blob-am/vcr-am-sdk-php/blob/main/CHANGELOG.md#030--2026-05-04)
+  for details and the [project sync-versioning policy](https://github.com/blob-am/vcr-am-php/blob/main/docs/releasing.md#versioning).
+
 ## [0.2.0] — 2026-05-04
 
 First release. Starts at `0.2.0` (not `0.1.0`) to align with the
