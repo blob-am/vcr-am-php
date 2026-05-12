@@ -2,6 +2,28 @@
 
 All notable changes to this package will be documented in this file.
 
+## [0.4.0] — 2026-05-13
+
+### Breaking
+
+- **`CreateDepartmentInput::__construct`** now requires `LocalizedName $title`
+  as the second positional argument (before the optional `$externalId`).
+  The server-side endpoint previously persisted departments without a
+  title, which crashed X/Z reports for any sale that referenced one. The
+  0.3.0 call shape (`new CreateDepartmentInput(taxRegime: ..., externalId: ...)`)
+  is no longer accepted by the server. Update calls to:
+
+  ```php
+  new CreateDepartmentInput(
+      taxRegime: TaxRegime::Vat,
+      title: new LocalizedName(
+          value: ['hy' => 'Մթերք', 'ru' => 'Продукты', 'en' => 'Groceries'],
+          localizationStrategy: LocalizationStrategy::Translation,
+      ),
+      externalId: 'erp-dept-bakery',
+  );
+  ```
+
 ## [0.3.0] — 2026-05-04
 
 ### Added

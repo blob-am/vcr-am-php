@@ -2,6 +2,12 @@
 
 All notable changes to `blob-solutions/laravel-vcr-am` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] — 2026-05-13
+
+### Breaking (propagated from SDK)
+
+- **No functional adapter changes.** Synchronises with [`blob-solutions/vcr-am-sdk@0.4.0`](https://packagist.org/packages/blob-solutions/vcr-am-sdk), which makes `CreateDepartmentInput::__construct` require a `LocalizedName $title` argument. Laravel call sites that build the input via `new CreateDepartmentInput(...)` must add the `title:` parameter — see the [SDK CHANGELOG](https://github.com/blob-am/vcr-am-sdk-php/blob/main/CHANGELOG.md#040--2026-05-13).
+
 ## [0.3.0] — 2026-05-04
 
 ### Changed

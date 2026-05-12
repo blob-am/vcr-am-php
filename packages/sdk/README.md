@@ -108,10 +108,16 @@ Creates a department (tax-regime-bound bucket of offers).
 
 ```php
 use BlobSolutions\VcrAm\Input\CreateDepartmentInput;
+use BlobSolutions\VcrAm\Input\LocalizedName;
+use BlobSolutions\VcrAm\LocalizationStrategy;
 use BlobSolutions\VcrAm\TaxRegime;
 
 $response = $client->createDepartment(new CreateDepartmentInput(
     taxRegime: TaxRegime::Vat,
+    title: new LocalizedName(
+        value: ['hy' => 'Հացաբուլկեղեն', 'ru' => 'Хлебобулочные', 'en' => 'Bakery'],
+        localizationStrategy: LocalizationStrategy::Translation,
+    ),
     externalId: 'erp-dept-bakery',
 ));
 
