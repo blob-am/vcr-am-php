@@ -312,3 +312,16 @@ it('VcrAm::sandbox() throws if the container binding was rebound to a non-VcrCli
 
     VcrAm::sandbox();
 })->throws(RuntimeException::class, 'expected');
+
+it('VcrAmFake::reset() clears recorded calls so test phases can assert on a clean window', function (): void {
+    $fake = VcrAm::fake([
+        'GET /cashiers' => [],
+    ]);
+
+    app(VcrClient::class)->listCashiers();
+    VcrAm::assertSentCount(1);
+
+    $fake->reset();
+
+    VcrAm::assertNothingSent();
+});

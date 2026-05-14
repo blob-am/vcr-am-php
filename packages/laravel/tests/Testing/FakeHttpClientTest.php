@@ -52,3 +52,25 @@ it('jsonResponse accepts a non-default status so stubs can simulate 4xx errors',
     expect($response->getStatusCode())->toBe(422)
         ->and((string) $response->getBody())->toContain('"code":"X"');
 });
+
+it('stub() rejects matcher keys that are not in the form "METHOD /path"', function (): void {
+    $fake = new FakeHttpClient();
+    $fake->stub('not-a-valid-matcher', static fn () => FakeHttpClient::jsonResponse([]));
+})->throws(RuntimeException::class, 'not in the form "METHOD /path"');
+
+it('reset() clears both stubs and recorded calls', function (): void {
+    $fake = new FakeHttpClient();
+    $fake->stub('GET /custom', static fn () => FakeHttpClient::jsonResponse([]));
+
+    $request = (new Psr17Factory())->createRequest('GET', 'https://example.com/custom');
+    $fake->sendRequest($request);
+    expect($fake->recorded())->toHaveCount(1);
+
+    $fake->reset();
+
+    expect($fake->recorded())->toBe([]);
+
+    // After reset the previously-registered stub is gone too, so the same
+    // request now fails the way an un-stubbed call would.
+    expect(fn () => $fake->sendRequest($request))->toThrow(RuntimeException::class, 'no stub registered');
+});
