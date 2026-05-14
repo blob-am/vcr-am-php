@@ -51,7 +51,7 @@ final class VcrAm extends Facade
      */
     public static function sandbox(): VcrClient
     {
-        $client = self::resolveApp()->make(VcrAmServiceProvider::SANDBOX_BINDING);
+        $client = app(VcrAmServiceProvider::SANDBOX_BINDING);
 
         if (! $client instanceof VcrClient) {
             throw new RuntimeException(sprintf(
@@ -80,29 +80,9 @@ final class VcrAm extends Facade
      */
     public static function fake(array $stubs = []): VcrAmFake
     {
-        self::$fake = new VcrAmFake(self::resolveApp(), $stubs);
+        self::$fake = new VcrAmFake(app(), $stubs);
 
         return self::$fake;
-    }
-
-    /**
-     * Narrow `Facade::$app` (typed `Application|null`) to a non-null value.
-     * In a booted Laravel test or runtime it is always set; if it isn't, the
-     * caller is using the facade outside its supported lifecycle and a clear
-     * exception is more useful than a `Cannot call method on null`.
-     */
-    private static function resolveApp(): \Illuminate\Contracts\Foundation\Application
-    {
-        $app = static::$app;
-
-        if ($app === null) {
-            throw new RuntimeException(
-                'VCR.AM facade is not bound to an application yet. '
-                . 'Call this from a booted Laravel context (HTTP request, console command, test).',
-            );
-        }
-
-        return $app;
     }
 
     /**

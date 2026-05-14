@@ -177,3 +177,138 @@ it('fakeRecorder() throws when fake() was not called', function (): void {
 
     VcrAm::assertNothingSent();
 })->throws(RuntimeException::class, 'no active fake');
+
+it('assertNotSent fails with a count when a matching request exists', function (): void {
+    VcrAm::fake([
+        'POST /sales' => ['urlId' => 'X', 'saleId' => 1, 'crn' => 'C', 'srcReceiptId' => 1, 'fiscal' => 'F'],
+    ]);
+
+    app(VcrClient::class)->registerSale(sampleSale());
+
+    try {
+        VcrAm::assertNotSent('POST /sales');
+        $this->fail('expected AssertionFailedError');
+    } catch (AssertionFailedError $e) {
+        expect($e->getMessage())->toContain('POST /sales')
+            ->and($e->getMessage())->toContain('found 1');
+    }
+});
+
+it('assertNotSent narrows on a body matcher and reports the matcher in the failure', function (): void {
+    VcrAm::fake([
+        'POST /sales' => ['urlId' => 'X', 'saleId' => 1, 'crn' => 'C', 'srcReceiptId' => 1, 'fiscal' => 'F'],
+    ]);
+
+    app(VcrClient::class)->registerSale(sampleSale());
+
+    try {
+        VcrAm::assertNotSent(
+            'POST /sales',
+            fn (?array $body): bool => ($body['cashier']['deskId'] ?? null) === 'desk-1',
+        );
+        $this->fail('expected AssertionFailedError');
+    } catch (AssertionFailedError $e) {
+        expect($e->getMessage())->toContain('body matcher');
+    }
+});
+
+it('assertSentCount fails when the recorded total does not match', function (): void {
+    VcrAm::fake([
+        'POST /sales' => ['urlId' => 'X', 'saleId' => 1, 'crn' => 'C', 'srcReceiptId' => 1, 'fiscal' => 'F'],
+    ]);
+
+    app(VcrClient::class)->registerSale(sampleSale());
+
+    try {
+        VcrAm::assertSentCount(2);
+        $this->fail('expected AssertionFailedError');
+    } catch (AssertionFailedError $e) {
+        expect($e->getMessage())->toContain('Expected 2')
+            ->and($e->getMessage())->toContain('got 1');
+    }
+});
+
+it('assertSentCount renders "(none)" in the failure message when nothing was recorded', function (): void {
+    VcrAm::fake();
+
+    try {
+        VcrAm::assertSentCount(3);
+        $this->fail('expected AssertionFailedError');
+    } catch (AssertionFailedError $e) {
+        expect($e->getMessage())->toContain('(none)');
+    }
+});
+
+it('assertSent fails with "no requests were recorded" when the fake never saw a call', function (): void {
+    VcrAm::fake();
+
+    try {
+        VcrAm::assertSent('POST /sales');
+        $this->fail('expected AssertionFailedError');
+    } catch (AssertionFailedError $e) {
+        expect($e->getMessage())->toContain('no requests were recorded');
+    }
+});
+
+it('assertSent with a non-matching body matcher reports it in the failure', function (): void {
+    VcrAm::fake([
+        'POST /sales' => ['urlId' => 'X', 'saleId' => 1, 'crn' => 'C', 'srcReceiptId' => 1, 'fiscal' => 'F'],
+    ]);
+
+    app(VcrClient::class)->registerSale(sampleSale());
+
+    try {
+        VcrAm::assertSent(
+            'POST /sales',
+            fn (?array $body): bool => ($body['cashier']['deskId'] ?? null) === 'nope',
+        );
+        $this->fail('expected AssertionFailedError');
+    } catch (AssertionFailedError $e) {
+        expect($e->getMessage())->toContain('body matcher');
+    }
+});
+
+it('rejects malformed assertion matchers with a clear error', function (): void {
+    VcrAm::fake();
+
+    VcrAm::assertSent('not-a-valid-matcher');
+})->throws(AssertionFailedError::class, 'METHOD /path');
+
+it('accepts a Closure stub that returns a raw array (auto-wrapped into 200 JSON)', function (): void {
+    VcrAm::fake([
+        'POST /sales' => fn (): array => [
+            'urlId' => 'closure-array',
+            'saleId' => 11,
+            'crn' => 'C',
+            'srcReceiptId' => 1,
+            'fiscal' => 'F',
+        ],
+    ]);
+
+    $response = app(VcrClient::class)->registerSale(sampleSale());
+
+    expect($response->urlId)->toBe('closure-array')
+        ->and($response->saleId)->toBe(11);
+});
+
+it('skips initial-stubs entries keyed by the empty string', function (): void {
+    // Edge case: a degenerate ['' => ...] entry should be silently ignored
+    // rather than rejected as a malformed matcher, so users can do
+    //     VcrAm::fake($maybeEmptyStubs)
+    // without pre-filtering.
+    VcrAm::fake([
+        '' => ['noop' => true],
+        'POST /sales' => ['urlId' => 'X', 'saleId' => 1, 'crn' => 'C', 'srcReceiptId' => 1, 'fiscal' => 'F'],
+    ]);
+
+    app(VcrClient::class)->registerSale(sampleSale());
+
+    VcrAm::assertSentCount(1);
+});
+
+it('VcrAm::sandbox() throws if the container binding was rebound to a non-VcrClient', function (): void {
+    config()->set('vcr-am.sandbox_api_key', 'sandbox-key');
+    $this->app->instance(VcrAmServiceProvider::SANDBOX_BINDING, new stdClass());
+
+    VcrAm::sandbox();
+})->throws(RuntimeException::class, 'expected');

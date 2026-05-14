@@ -5,7 +5,6 @@ declare(strict_types=1);
 use BlobSolutions\LaravelVcrAm\Facades\VcrAm;
 use BlobSolutions\LaravelVcrAm\VcrAmServiceProvider;
 use BlobSolutions\VcrAm\VcrClient;
-use RuntimeException;
 
 it('resolves to the VcrClient instance bound in the container', function (): void {
     $facadeRoot = VcrAm::getFacadeRoot();

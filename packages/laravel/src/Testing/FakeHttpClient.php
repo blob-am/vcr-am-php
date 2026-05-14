@@ -58,27 +58,23 @@ final class FakeHttpClient implements ClientInterface
 
     public function sendRequest(RequestInterface $request): ResponseInterface
     {
-        $key = sprintf(
-            '%s %s',
-            strtoupper($request->getMethod()),
-            $request->getUri()->getPath(),
-        );
+        $method = strtoupper($request->getMethod());
+        // The SDK's base URL prefixes its path on every request (e.g.
+        // `https://vcr.am/api/v1/sales`). For test ergonomics we strip the
+        // known SDK base path so stubs and assertions can use the bare
+        // endpoint name that callers read in the SDK source (`POST /sales`).
+        $barePath = self::stripBaseFromPath($request->getUri()->getPath());
+        $bareKey = $method . ' ' . $barePath;
 
-        // The SDK's base URL is prefixed onto the path before the request is
-        // built (e.g. https://vcr.am/api/v1/sales). For test ergonomics we
-        // strip the known SDK base path so callers can declare stubs as the
-        // bare endpoint they read in the SDK's source ("POST /sales").
-        $bareKey = $this->stripBasePath($key);
-
-        $factory = $this->stubs[$bareKey] ?? $this->stubs[$key] ?? null;
+        $factory = $this->stubs[$bareKey] ?? null;
 
         $rawBody = (string) $request->getBody();
         $request->getBody()->rewind();
 
         $this->recorded[] = new RecordedRequest(
             request: $request,
-            method: strtoupper($request->getMethod()),
-            path: $this->stripBaseFromPath($request->getUri()->getPath()),
+            method: $method,
+            path: $barePath,
             rawBody: $rawBody,
             decodedBody: self::tryDecodeJson($rawBody),
         );
@@ -128,28 +124,31 @@ final class FakeHttpClient implements ClientInterface
         return strtoupper($match[1]) . ' ' . $match[2];
     }
 
-    private function stripBasePath(string $key): string
-    {
-        // The SDK's base URL path is one of:
-        //   - /api/v1            (production)
-        //   - whatever VCR_AM_BASE_URL was overridden to
-        // We only know about /api/v1 statically; everything else stays
-        // verbatim and the test author can stub against the full path.
-        return preg_replace('#^(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)\s+/api/v1#i', '$1 ', $key) ?? $key;
-    }
-
     /**
-     * Same intent as {@see self::stripBasePath()} but applied to a bare path
-     * (no leading `METHOD `). Lets recorded entries carry the same shape that
-     * assertion matchers use, so `assertSent('POST /sales')` lines up with a
-     * recorded `path === '/sales'`.
+     * Strip the SDK's known base path so recorded `path` and stub matchers
+     * stay readable. A request to `https://vcr.am/api/v1/sales` records as
+     * `/sales`; a request to a non-`/api/v1` base URL (e.g. when
+     * `VCR_AM_BASE_URL` is overridden) records its path verbatim.
      */
-    private function stripBaseFromPath(string $path): string
+    private const SDK_BASE_PATH = '/api/v1';
+
+    private static function stripBaseFromPath(string $path): string
     {
-        return preg_replace('#^/api/v1#', '', $path) ?? $path;
+        return str_starts_with($path, self::SDK_BASE_PATH)
+            ? substr($path, strlen(self::SDK_BASE_PATH))
+            : $path;
     }
 
     /**
+     * Decode the JSON-shaped request bodies that the SDK emits, so assertions
+     * can match on the parsed shape without the test re-doing `json_decode`.
+     *
+     * Returns `null` for: empty body (e.g. GET), body that doesn't parse as
+     * JSON, body whose JSON root is a scalar. PSR-18 doesn't constrain the
+     * body shape, so the fake guards against all three rather than crashing
+     * a recorder — the test should still be able to inspect `rawBody` even
+     * when JSON parsing failed.
+     *
      * @return array<array-key, mixed>|null
      */
     private static function tryDecodeJson(string $body): ?array
