@@ -93,10 +93,142 @@ php artisan vcr-am:health
 ```
 
 ```
-VCR.AM API reachable. Found 3 cashier(s).
+VCR.AM API reachable.
+  VCR    : "My Shop" (CRN 1234567890123)
+  Mode   : production
+  Entity : My Shop LLC (TIN 01234567)
 ```
 
+`Mode` is `production` or `sandbox` — useful at a glance for confirming which VCR your API key is wired to. Add `--sandbox` to point the check at the parallel sandbox client (see [Testing against a sandbox VCR](#testing-against-a-sandbox-vcr) below).
+
 Exit code is `0` on success, `1` on failure (with the SDK's error message printed).
+
+## Testing
+
+There are two distinct testing strategies. Pick whichever fits the seam you're testing:
+
+| You want… | Use |
+| --- | --- |
+| Unit tests that never touch the network | [`VcrAm::fake()`](#unit-tests-vcramfake) |
+| Smoke tests / staging against a real VCR | [Sandbox channel](#testing-against-a-sandbox-vcr) |
+
+### Unit tests: `VcrAm::fake()`
+
+Modelled on Laravel's `Http::fake()`. After calling `VcrAm::fake()`, every resolution of `VcrClient` (via the facade, `app(VcrClient::class)`, or constructor DI) returns a fake that records every request and rejects every un-stubbed endpoint with a clear `RuntimeException` — so SDK calls the test didn't expect surface as test failures, not as silent passes.
+
+```php
+use BlobSolutions\LaravelVcrAm\Facades\VcrAm;
+
+it('fiscalises checkout via VCR.AM', function (): void {
+    VcrAm::fake([
+        'POST /sales' => [
+            'urlId' => 'abc',
+            'saleId' => 42,
+            'crn' => '1234567890123',
+            'srcReceiptId' => 100,
+            'fiscal' => 'F-1',
+        ],
+    ]);
+
+    $this->postJson('/checkout', [/* ... */])->assertSuccessful();
+
+    VcrAm::assertSentCount(1);
+    VcrAm::assertSent(
+        'POST /sales',
+        fn (?array $body) => ($body['cashier']['deskId'] ?? null) === 'desk-1',
+    );
+});
+```
+
+Stub forms:
+
+```php
+// Plain array — turned into a 200 JSON response.
+VcrAm::fake([
+    'POST /sales' => ['urlId' => 'X', /* ... */],
+]);
+
+// Closure — receives the captured PSR-7 request, returns either a
+// ResponseInterface or a plain array.
+VcrAm::fake([
+    'POST /sales' => function (Psr\Http\Message\RequestInterface $request) {
+        return ['urlId' => 'dyn', /* ... */];
+    },
+]);
+
+// Throw a server-side error to test how your code handles failures.
+use Nyholm\Psr7\Response;
+
+VcrAm::fake([
+    'POST /sales' => fn () => new Response(
+        400,
+        ['Content-Type' => 'application/json'],
+        '{"code":"VALIDATION","message":"price must be positive"}',
+    ),
+]);
+```
+
+Assertions:
+
+```php
+VcrAm::assertSent('POST /sales');                          // any matching request
+VcrAm::assertSent('POST /sales', fn (?array $body) => /* ... */);  // narrow on body
+VcrAm::assertNotSent('POST /prepayments');                 // negative assertion
+VcrAm::assertNothingSent();                                // no SDK calls at all
+VcrAm::assertSentCount(2);                                 // exact request count
+```
+
+The matcher syntax is `"METHOD /path"`. Method is case-insensitive, path is exact. The SDK base path (`/api/v1`) is stripped automatically so stubs read like the endpoints documented in the SDK source (`POST /sales`, not `POST /api/v1/sales`).
+
+### Testing against a sandbox VCR
+
+The SDK has no operating-mode flag of its own — sandbox is determined entirely by the VCR an API key authenticates against. To run real HTTP calls during integration testing without touching production, create a sandbox VCR at [vcr.am](https://vcr.am), generate an API key for it, and point this package at it.
+
+Quickest setup — overwrite the default key in your testing environment:
+
+```env
+# .env.testing
+VCR_AM_API_KEY=sk_sandbox_...
+```
+
+Or run two clients side-by-side — useful when a single app needs both for different flows (e.g. real receipts in production paths, sandbox receipts in an E2E suite that runs against the same deploy):
+
+```env
+# .env
+VCR_AM_API_KEY=sk_live_...
+VCR_AM_SANDBOX_API_KEY=sk_sandbox_...
+```
+
+```php
+VcrAm::registerSale($input);             // hits the production VCR
+VcrAm::sandbox()->registerSale($input);  // hits the sandbox VCR
+```
+
+The sandbox `VcrClient` is also resolvable through the container:
+
+```php
+use BlobSolutions\LaravelVcrAm\VcrAmServiceProvider;
+use BlobSolutions\VcrAm\VcrClient;
+
+$sandbox = app(VcrAmServiceProvider::SANDBOX_BINDING); // returns VcrClient
+```
+
+Calling `VcrAm::sandbox()` without `VCR_AM_SANDBOX_API_KEY` set throws a `RuntimeException` — deliberately, so production code never silently downgrades to the default key.
+
+### Health check, sandbox edition
+
+`vcr-am:health` also accepts `--sandbox` and reports the sandbox VCR's identity:
+
+```bash
+php artisan vcr-am:health --sandbox
+```
+
+```
+VCR.AM API reachable.
+  VCR    : "My Shop (sandbox)" (CRN not activated)
+  Mode   : sandbox
+  Entity : My Shop LLC (TIN 01234567)
+```
 
 ## Logging
 

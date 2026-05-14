@@ -2,6 +2,36 @@
 
 All notable changes to `blob-solutions/laravel-vcr-am` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- **`VcrAm::sandbox()` + `VCR_AM_SANDBOX_API_KEY`** — a parallel `VcrClient`
+  is registered under the `vcr-am.sandbox` container binding when
+  `VCR_AM_SANDBOX_API_KEY` is set. Useful when a single app needs both a
+  production and a sandbox client wired side-by-side (E2E suites, demos,
+  staging smoke tests). Calling `VcrAm::sandbox()` without the env var
+  throws a clear `RuntimeException` so production code never silently
+  downgrades to the default key.
+- **`VcrAm::fake()`** — drop-in test double modelled on Laravel's
+  `Http::fake()`. Rebinds both the production and sandbox `VcrClient`
+  bindings onto a PSR-18 fake that records every request and rejects
+  un-stubbed endpoints with a clear `RuntimeException`. Ships with
+  `assertSent()`, `assertNotSent()`, `assertNothingSent()`, and
+  `assertSentCount()` assertion helpers. Stub matchers read like the
+  SDK source — `"POST /sales"`, `"GET /cashiers"` — and accept either an
+  array (autowrapped into a 200 JSON response) or a closure that returns
+  a PSR-7 `ResponseInterface`.
+- **`vcr-am:health`** now prints the VCR's name, CRN, operating mode
+  (production / sandbox), and the owning entity. Add `--sandbox` to run
+  the check against the sandbox client.
+- README section: [Testing](README.md#testing).
+
+### Changed
+
+- Requires `blob-solutions/vcr-am-sdk` with the new `whoami()` endpoint
+  (currently `dev-main`, will resolve to the next tagged SDK release).
+
 ## [0.4.0] — 2026-05-13
 
 ### Breaking (propagated from SDK)

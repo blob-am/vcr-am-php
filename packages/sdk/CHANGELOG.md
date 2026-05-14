@@ -2,6 +2,22 @@
 
 All notable changes to this package will be documented in this file.
 
+## Unreleased
+
+### Added
+
+- **`VcrClient::whoami()`** — new endpoint that returns the VCR identity the
+  calling API key belongs to: VCR id, CRN, mode (`production` / `sandbox`),
+  trading platform name, and the owning business entity's TIN and English
+  name. Useful for SDK health checks and for distinguishing
+  production-vs-sandbox keys in client-side diagnostics. The companion
+  `BlobSolutions\VcrAm\VcrMode` enum and
+  `BlobSolutions\VcrAm\Model\AccountInfo` /
+  `BlobSolutions\VcrAm\Model\AccountBusinessEntity` value objects ship in
+  this release.
+- Works pre-activation: a freshly-imported VCR that does not yet have a
+  CRN returns `crn: null` rather than 403.
+
 ## [0.4.0] — 2026-05-13
 
 ### Breaking

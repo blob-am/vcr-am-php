@@ -14,6 +14,7 @@ use BlobSolutions\VcrAm\Input\RegisterPrepaymentInput;
 use BlobSolutions\VcrAm\Input\RegisterPrepaymentRefundInput;
 use BlobSolutions\VcrAm\Input\RegisterSaleInput;
 use BlobSolutions\VcrAm\Input\RegisterSaleRefundInput;
+use BlobSolutions\VcrAm\Model\AccountInfo;
 use BlobSolutions\VcrAm\Model\CashierListItem;
 use BlobSolutions\VcrAm\Model\ClassifierSearchItem;
 use BlobSolutions\VcrAm\Model\CreateCashierResponse;
@@ -94,6 +95,32 @@ final class VcrClient
         $this->mapper = (new MapperBuilder())
             ->allowSuperfluousKeys()
             ->mapper();
+    }
+
+    /**
+     * Resolves the identity of the VCR (Virtual Cash Register) that the
+     * calling API key belongs to. Returns the VCR id, CRN (if activated),
+     * mode (production / sandbox), trading-platform name, and the owning
+     * business entity's TIN and English name.
+     *
+     * Use this for SDK health-checks and to tell production-vs-sandbox keys
+     * apart in client-side diagnostics. Works on freshly-imported VCRs that
+     * have not been activated yet — `$crn` is `null` in that case.
+     *
+     * @throws VcrApiException        On non-2xx HTTP responses
+     * @throws VcrNetworkException    On network/transport failures
+     * @throws VcrValidationException On schema mismatches in the response body
+     */
+    public function whoami(): AccountInfo
+    {
+        /** @var AccountInfo $result */
+        $result = $this->request(
+            'GET',
+            '/whoami',
+            AccountInfo::class,
+        );
+
+        return $result;
     }
 
     /**
