@@ -7,6 +7,7 @@ use BlobSolutions\VcrAm\Model\Cashier;
 use BlobSolutions\VcrAm\Model\PrepaymentDetail;
 use BlobSolutions\VcrAm\Model\PrepaymentRefund;
 use BlobSolutions\VcrAm\Model\Receipt;
+use BlobSolutions\VcrAm\PrepaymentState;
 use Nyholm\Psr7\Response;
 use PHPUnit\Framework\Assert;
 use Psr\Http\Message\RequestInterface;
@@ -38,6 +39,8 @@ function makeSamplePrepaymentDetailJson(): string
                 ['id' => 100, 'language' => 'hy', 'content' => 'Հաշվապահ'],
             ],
         ],
+        'remaining' => 5000,
+        'state' => 'open',
     ], JSON_THROW_ON_ERROR);
 }
 
@@ -55,7 +58,9 @@ it('parses a complete prepayment detail with an issued receipt and no refund', f
         ->and($prepayment->refund)->toBeNull()
         ->and($prepayment->cashier)->toBeInstanceOf(Cashier::class)
         ->and($prepayment->cashier->deskId)->toBe('desk-1')
-        ->and($prepayment->receipt)->toBeInstanceOf(Receipt::class);
+        ->and($prepayment->receipt)->toBeInstanceOf(Receipt::class)
+        ->and($prepayment->remaining)->toBe(5000.0)
+        ->and($prepayment->state)->toBe(PrepaymentState::Open);
 
     Assert::assertNotNull($prepayment->receipt);
     expect($prepayment->receipt->fiscal)->toBe('FA00099001')
@@ -81,6 +86,8 @@ it('parses a prepayment detail with a refund and null receipt', function (): voi
             'deskId' => 'desk-2',
             'name' => [],
         ],
+        'remaining' => 0,
+        'state' => 'refunded',
     ], JSON_THROW_ON_ERROR);
     $mock->addResponse(new Response(200, ['Content-Type' => 'application/json'], $body));
 
@@ -88,7 +95,9 @@ it('parses a prepayment detail with a refund and null receipt', function (): voi
 
     expect($prepayment->receipt)->toBeNull()
         ->and($prepayment->buyerTin)->toBe('12345678')
-        ->and($prepayment->refund)->toBeInstanceOf(PrepaymentRefund::class);
+        ->and($prepayment->refund)->toBeInstanceOf(PrepaymentRefund::class)
+        ->and($prepayment->state)->toBe(PrepaymentState::Refunded)
+        ->and($prepayment->remaining)->toBe(0.0);
 
     Assert::assertNotNull($prepayment->refund);
     expect($prepayment->refund->nonCashAmount)->toBe(3000.0)

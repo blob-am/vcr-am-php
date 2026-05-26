@@ -6,6 +6,24 @@ All notable changes to this package will be documented in this file.
 
 ### Added
 
+- **`VcrClient::listPrepayments(?string $customerRef, ?PrepaymentState $state)`** —
+  wraps `GET /prepayments`. Returns a `list<PrepaymentListItem>` capped at 500;
+  each item carries the ledger-derived `remaining` and `state`.
+- **`VcrClient::getCustomerPrepaymentBalance(string $customerRef)`** — wraps
+  `GET /prepayments/balance`. Returns a `CustomerPrepaymentBalance` with the
+  total open balance for that customer (scoped to the BusinessEntity that
+  owns the calling VCR's API key) plus the FIFO-ordered list of contributing
+  open prepayments.
+- New types: `BlobSolutions\VcrAm\PrepaymentState` enum (`Open` /
+  `Consumed` / `Refunded`), `Model\PrepaymentListItem`,
+  `Model\CustomerPrepaymentBalance`, `Model\CustomerOpenPrepayment`.
+
+### Changed
+
+- **`Model\PrepaymentDetail`** now also exposes `remaining: float` and
+  `state: PrepaymentState`, mirroring the server response. Strictly additive
+  — existing field access is unchanged.
+
 - **`VcrClient::whoami()`** — new endpoint that returns the VCR identity the
   calling API key belongs to: VCR id, CRN, mode (`production` / `sandbox`),
   trading platform name, and the owning business entity's TIN and English

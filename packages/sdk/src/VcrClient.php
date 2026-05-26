@@ -20,7 +20,9 @@ use BlobSolutions\VcrAm\Model\ClassifierSearchItem;
 use BlobSolutions\VcrAm\Model\CreateCashierResponse;
 use BlobSolutions\VcrAm\Model\CreateDepartmentResponse;
 use BlobSolutions\VcrAm\Model\CreateOfferResponse;
+use BlobSolutions\VcrAm\Model\CustomerPrepaymentBalance;
 use BlobSolutions\VcrAm\Model\PrepaymentDetail;
+use BlobSolutions\VcrAm\Model\PrepaymentListItem;
 use BlobSolutions\VcrAm\Model\RegisterPrepaymentRefundResponse;
 use BlobSolutions\VcrAm\Model\RegisterPrepaymentResponse;
 use BlobSolutions\VcrAm\Model\RegisterSaleRefundResponse;
@@ -229,6 +231,80 @@ final class VcrClient
             'GET',
             sprintf('/prepayments/%d', $prepaymentId),
             PrepaymentDetail::class,
+        );
+
+        return $result;
+    }
+
+    /**
+     * Lists prepayments registered through the calling VCR. The server caps
+     * the response at 500 rows; for larger sets, narrow with `$customerRef`.
+     *
+     * `remaining` and `state` on each item are derived from the ledger — call
+     * this whenever you want a current snapshot rather than caching the result.
+     *
+     * @param ?string                 $customerRef Exact-match filter against the customer
+     *                                             identifier (TIN / normalized E.164 phone /
+     *                                             lowercased email)
+     * @param PrepaymentState|null    $state       Lifecycle filter; pass `null` for all
+     *
+     * @return list<PrepaymentListItem>
+     *
+     * @throws VcrApiException
+     * @throws VcrNetworkException
+     * @throws VcrValidationException
+     */
+    public function listPrepayments(?string $customerRef = null, ?PrepaymentState $state = null): array
+    {
+        $query = [];
+        if ($customerRef !== null) {
+            $query['customerRef'] = $customerRef;
+        }
+        if ($state !== null) {
+            $query['state'] = $state->value;
+        }
+
+        /** @var list<PrepaymentListItem> $result */
+        $result = $this->request(
+            'GET',
+            '/prepayments',
+            'list<' . PrepaymentListItem::class . '>',
+            null,
+            $query === [] ? null : $query,
+        );
+
+        return $result;
+    }
+
+    /**
+     * Returns a customer's open prepayment balance scoped to the BusinessEntity
+     * that owns the calling VCR's API key. Because the ledger is entity-scoped,
+     * the result reflects deposits made through any VCR belonging to the same
+     * entity — merchants who run more than one VCR see a single wallet.
+     *
+     * `$customerRef` is matched exactly against the ledger. Use whichever
+     * identifier the customer gave at deposit time; identities are not
+     * auto-merged across different ref types (TIN vs phone vs email).
+     *
+     * @throws InvalidArgumentException When `$customerRef` is empty after trim
+     * @throws VcrApiException
+     * @throws VcrNetworkException
+     * @throws VcrValidationException
+     */
+    public function getCustomerPrepaymentBalance(string $customerRef): CustomerPrepaymentBalance
+    {
+        $trimmed = trim($customerRef);
+        if ($trimmed === '') {
+            throw new InvalidArgumentException('customerRef must not be empty.');
+        }
+
+        /** @var CustomerPrepaymentBalance $result */
+        $result = $this->request(
+            'GET',
+            '/prepayments/balance',
+            CustomerPrepaymentBalance::class,
+            null,
+            ['customerRef' => $trimmed],
         );
 
         return $result;

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BlobSolutions\VcrAm\Model;
 
+use BlobSolutions\VcrAm\PrepaymentState;
+
 /**
  * Detail payload returned by {@see \BlobSolutions\VcrAm\VcrClient::getPrepayment()}.
  *
@@ -13,6 +15,10 @@ namespace BlobSolutions\VcrAm\Model;
  *
  * `createdAt` is an ISO 8601 datetime string in UTC — left as a string
  * so callers can parse with the date library of their choice.
+ *
+ * `remaining` and `state` are derived from the PrepaymentLedger and reflect
+ * the prepayment's current lifecycle. Treat them as a current snapshot — do
+ * not cache.
  */
 final readonly class PrepaymentDetail
 {
@@ -25,6 +31,8 @@ final readonly class PrepaymentDetail
         public ?Receipt $receipt,
         public ?PrepaymentRefund $refund,
         public Cashier $cashier,
+        public float $remaining,
+        public PrepaymentState $state,
     ) {
     }
 }
