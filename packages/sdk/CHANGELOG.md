@@ -6,6 +6,14 @@ All notable changes to this package will be documented in this file.
 
 ### Added
 
+- **`VcrClient::listDepartments()`** — wraps `GET /departments`. Returns
+  `list<DepartmentListItem>` with `internalId`, `externalId`, `taxRegime`,
+  and the localised `title` keyed by language. Only departments confirmed
+  by the tax service are returned, so each `internalId` is safe to reference
+  from a sale item's `department.id`. Closes the gap where the SDK could
+  create departments but not list them.
+- New models: `Model\DepartmentListItem`, `Model\DepartmentLocalizedTitle`.
+
 - **`VcrClient::listPrepayments(?string $customerRef, ?PrepaymentState $state)`** —
   wraps `GET /prepayments`. Returns a `list<PrepaymentListItem>` capped at 500;
   each item carries the ledger-derived `remaining` and `state`.

@@ -21,6 +21,7 @@ use BlobSolutions\VcrAm\Model\CreateCashierResponse;
 use BlobSolutions\VcrAm\Model\CreateDepartmentResponse;
 use BlobSolutions\VcrAm\Model\CreateOfferResponse;
 use BlobSolutions\VcrAm\Model\CustomerPrepaymentBalance;
+use BlobSolutions\VcrAm\Model\DepartmentListItem;
 use BlobSolutions\VcrAm\Model\PrepaymentDetail;
 use BlobSolutions\VcrAm\Model\PrepaymentListItem;
 use BlobSolutions\VcrAm\Model\RegisterPrepaymentRefundResponse;
@@ -367,6 +368,30 @@ final class VcrClient
             '/departments',
             CreateDepartmentResponse::class,
             $input->jsonSerialize(),
+        );
+
+        return $result;
+    }
+
+    /**
+     * Lists departments configured on the calling VCR — internal id,
+     * external id, tax regime, and the localised title. Only departments
+     * confirmed by the tax service are returned, so each `internalId` is
+     * safe to reference from a sale item's `department.id`.
+     *
+     * @return list<DepartmentListItem>
+     *
+     * @throws VcrApiException
+     * @throws VcrNetworkException
+     * @throws VcrValidationException
+     */
+    public function listDepartments(): array
+    {
+        /** @var list<DepartmentListItem> $result */
+        $result = $this->request(
+            'GET',
+            '/departments',
+            'list<' . DepartmentListItem::class . '>',
         );
 
         return $result;
