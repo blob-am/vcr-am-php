@@ -75,3 +75,45 @@ it('rejects a 9-digit TIN', function (): void {
 it('rejects an 11-digit TIN', function (): void {
     Buyer::businessEntity('12345678901');
 })->throws(InvalidArgumentException::class, 'TIN must be exactly 8 or 10 digits.');
+
+it('serializes optional email + phone on an individual buyer', function (): void {
+    $buyer = Buyer::individual(
+        receipt: null,
+        email: 'jane@example.com',
+        phone: '+37491234567',
+    );
+
+    expect($buyer->jsonSerialize())->toBe([
+        'type' => 'individual',
+        'email' => 'jane@example.com',
+        'phone' => '+37491234567',
+    ]);
+});
+
+it('serializes email + phone independently of receipt on a business buyer', function (): void {
+    $buyer = Buyer::businessEntity(
+        tin: '12345678',
+        receipt: null,
+        email: 'billing@example.com',
+        phone: '+37491234567',
+    );
+
+    expect($buyer->jsonSerialize())->toBe([
+        'type' => 'business_entity',
+        'tin' => '12345678',
+        'email' => 'billing@example.com',
+        'phone' => '+37491234567',
+    ]);
+});
+
+it('rejects a malformed email', function (): void {
+    Buyer::individual(email: 'not-an-email');
+})->throws(InvalidArgumentException::class, 'Email must be a valid address.');
+
+it('rejects a phone without leading +', function (): void {
+    Buyer::individual(phone: '37491234567');
+})->throws(InvalidArgumentException::class, 'Phone must be in E.164 format');
+
+it('rejects a phone with letters', function (): void {
+    Buyer::individual(phone: '+374abcdef');
+})->throws(InvalidArgumentException::class, 'Phone must be in E.164 format');
