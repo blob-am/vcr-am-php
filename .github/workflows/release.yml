@@ -33,7 +33,7 @@ jobs:
           fetch-depth: 0
 
       - name: Split to mirror
-        uses: danharrin/monorepo-split-github-action@v2.4.4
+        uses: danharrin/monorepo-split-github-action@v2.4.5
         env:
           GITHUB_TOKEN: ${{ secrets.MIRROR_PUSH_TOKEN }}
         with:
@@ -96,7 +96,7 @@ jobs:
           git tag "$TAG" HEAD
 
       - name: Split to mirror
-        uses: danharrin/monorepo-split-github-action@v2.4.4
+        uses: danharrin/monorepo-split-github-action@v2.4.5
         env:
           GITHUB_TOKEN: ${{ secrets.MIRROR_PUSH_TOKEN }}
         with:
