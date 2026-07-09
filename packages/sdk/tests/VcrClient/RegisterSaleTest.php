@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
+use BlobSolutions\VcrAm\AutoSettleTender;
 use BlobSolutions\VcrAm\Exception\VcrApiException;
 use BlobSolutions\VcrAm\Exception\VcrNetworkException;
 use BlobSolutions\VcrAm\Exception\VcrValidationException;
+use BlobSolutions\VcrAm\Input\AutoSettle;
 use BlobSolutions\VcrAm\Input\Buyer;
 use BlobSolutions\VcrAm\Input\CashierId;
 use BlobSolutions\VcrAm\Input\Department;
@@ -94,6 +96,56 @@ it('sends a POST request to /sales with the JSON-encoded input', function (): vo
         ],
         'amount' => ['cash' => '1500'],
         'buyer' => ['type' => 'individual'],
+    ]);
+});
+
+it('sends a foreign-currency auto-settle sale on the wire (per-item currency, no amount)', function (): void {
+    [$client, $mock] = makeMockedClient();
+    $body = json_encode([
+        'urlId' => 'r/abc',
+        'saleId' => 1,
+        'crn' => '0',
+        'srcReceiptId' => 1,
+        'fiscal' => '0',
+    ], JSON_THROW_ON_ERROR);
+    $mock->addResponse(new Response(200, ['Content-Type' => 'application/json'], $body));
+
+    $input = RegisterSaleInput::withAutoSettle(
+        cashier: CashierId::byDeskId('desk-1'),
+        items: [
+            new SaleItem(
+                offer: Offer::existing('sku-usd'),
+                department: new Department(5),
+                quantity: '1',
+                price: '10',
+                unit: Unit::Piece,
+                currency: 'USD',
+            ),
+        ],
+        autoSettle: new AutoSettle(AutoSettleTender::Cash),
+        buyer: Buyer::individual(),
+    );
+
+    $client->registerSale($input);
+
+    $request = $mock->getLastRequest();
+    assert($request instanceof RequestInterface);
+
+    $sentBody = json_decode((string) $request->getBody(), associative: true, flags: JSON_THROW_ON_ERROR);
+    expect($sentBody)->toBe([
+        'cashier' => ['deskId' => 'desk-1'],
+        'items' => [
+            [
+                'offer' => ['externalId' => 'sku-usd'],
+                'department' => ['id' => 5],
+                'quantity' => '1',
+                'price' => '10',
+                'unit' => 'pc',
+                'currency' => 'USD',
+            ],
+        ],
+        'buyer' => ['type' => 'individual'],
+        'autoSettle' => ['tender' => 'cash'],
     ]);
 });
 

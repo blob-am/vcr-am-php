@@ -12,37 +12,99 @@ use JsonSerializable;
  *
  * Mirrors the wire format produced by the TypeScript SDK so payloads sent
  * from PHP and Node hit the API identically.
+ *
+ * A sale settles by exactly one of two payment shapes, never both:
+ *
+ *   - `amount` — explicit AMD per tender ({@see SaleAmount});
+ *   - `autoSettle` — the VCR derives the whole AMD cart total and charges it
+ *     to a single tender ({@see AutoSettle}). Required for foreign-currency
+ *     sales, where the AMD total isn't knowable client-side.
+ *
+ * Use {@see self::withAmount()} / {@see self::withAutoSettle()} for a clear
+ * call site; the promoted constructor stays available for backward
+ * compatibility (pass `null` for `$amount` and a non-null `$autoSettle` for
+ * the derived-total mode).
  */
 final readonly class RegisterSaleInput implements JsonSerializable
 {
     /**
-     * @param list<SaleItem> $items Must contain at least one item; an empty
-     *                              list is rejected at runtime (defence in
-     *                              depth — callers may construct inputs from
-     *                              decoded JSON / config where the type
-     *                              system can't enforce non-emptiness).
+     * @param list<SaleItem> $items      Must contain at least one item; an empty
+     *                                   list is rejected at runtime (defence in
+     *                                   depth — callers may construct inputs from
+     *                                   decoded JSON / config where the type
+     *                                   system can't enforce non-emptiness).
+     * @param ?SaleAmount    $amount     Explicit AMD amounts. Provide exactly one
+     *                                   of `$amount` or `$autoSettle`.
+     * @param ?AutoSettle    $autoSettle Derived-total settlement. Provide exactly
+     *                                   one of `$amount` or `$autoSettle`.
      */
     public function __construct(
         public CashierId $cashier,
         public array $items,
-        public SaleAmount $amount,
+        public ?SaleAmount $amount,
         public Buyer $buyer,
+        public ?AutoSettle $autoSettle = null,
     ) {
         if ($items === []) {
             throw new InvalidArgumentException('A sale must contain at least one item.');
         }
+
+        $hasAmount = $amount !== null;
+        $hasAutoSettle = $autoSettle !== null;
+
+        if ($hasAmount === $hasAutoSettle) {
+            throw new InvalidArgumentException(
+                'Provide exactly one of `amount` (explicit AMD per tender) or `autoSettle` (VCR derives the total).',
+            );
+        }
     }
 
     /**
-     * @return array{cashier: CashierId, items: list<SaleItem>, amount: SaleAmount, buyer: Buyer}
+     * Settle the sale with explicit AMD amounts per tender.
+     *
+     * @param list<SaleItem> $items
+     */
+    public static function withAmount(CashierId $cashier, array $items, SaleAmount $amount, Buyer $buyer): self
+    {
+        return new self($cashier, $items, $amount, $buyer);
+    }
+
+    /**
+     * Let the VCR derive the whole AMD cart total and settle it on one tender.
+     * The natural choice for foreign-currency sales.
+     *
+     * @param list<SaleItem> $items
+     */
+    public static function withAutoSettle(CashierId $cashier, array $items, AutoSettle $autoSettle, Buyer $buyer): self
+    {
+        return new self($cashier, $items, null, $buyer, $autoSettle);
+    }
+
+    /**
+     * @return array<string, mixed>
      */
     public function jsonSerialize(): array
     {
-        return [
+        // Key order is kept stable (`cashier, items, amount, buyer`) for the
+        // amount path so it stays byte-identical to earlier releases; the
+        // optional `autoSettle` is appended. JSON object order is not
+        // semantically significant, but a stable shape keeps wire snapshots and
+        // golden tests from churning.
+        $payload = [
             'cashier' => $this->cashier,
             'items' => $this->items,
-            'amount' => $this->amount,
-            'buyer' => $this->buyer,
         ];
+
+        if ($this->amount !== null) {
+            $payload['amount'] = $this->amount;
+        }
+
+        $payload['buyer'] = $this->buyer;
+
+        if ($this->autoSettle !== null) {
+            $payload['autoSettle'] = $this->autoSettle;
+        }
+
+        return $payload;
     }
 }

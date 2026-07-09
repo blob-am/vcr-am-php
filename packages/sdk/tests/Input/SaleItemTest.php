@@ -189,3 +189,39 @@ it('rejects an empty emark entry', function (): void {
         emarks: ['VALID-CODE', '   '],
     );
 })->throws(InvalidArgumentException::class, 'emarks entries must not be empty.');
+
+it('serializes an item with a foreign currency (price stays as typed)', function (): void {
+    $item = new SaleItem(
+        offer: Offer::existing('sku-1'),
+        department: new Department(1),
+        quantity: '1',
+        price: '10',
+        unit: Unit::Piece,
+        currency: 'USD',
+    );
+
+    expect(json_encode($item, JSON_THROW_ON_ERROR))
+        ->toBe(json_encode([
+            'offer' => ['externalId' => 'sku-1'],
+            'department' => ['id' => 1],
+            'quantity' => '1',
+            'price' => '10',
+            'unit' => 'pc',
+            'currency' => 'USD',
+        ], JSON_THROW_ON_ERROR));
+});
+
+it('omits the currency field when null (native AMD line)', function (): void {
+    expect(json_encode(makeMinimalSaleItem(), JSON_THROW_ON_ERROR))->not->toContain('currency');
+});
+
+it('rejects a currency that is not a 3-letter code', function (): void {
+    new SaleItem(
+        offer: Offer::existing('sku-1'),
+        department: new Department(1),
+        quantity: '1',
+        price: '100',
+        unit: Unit::Piece,
+        currency: 'US',
+    );
+})->throws(InvalidArgumentException::class, 'currency must be a 3-letter ISO 4217 code');

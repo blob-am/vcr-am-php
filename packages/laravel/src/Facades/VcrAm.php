@@ -24,8 +24,12 @@ use RuntimeException;
  * @method static \BlobSolutions\VcrAm\Model\CreateCashierResponse createCashier(\BlobSolutions\VcrAm\Input\CreateCashierInput $input)
  * @method static \BlobSolutions\VcrAm\Model\CreateDepartmentResponse createDepartment(\BlobSolutions\VcrAm\Input\CreateDepartmentInput $input)
  * @method static \BlobSolutions\VcrAm\Model\CreateOfferResponse createOffer(\BlobSolutions\VcrAm\Input\CreateOfferInput $input)
+ * @method static list<\BlobSolutions\VcrAm\Model\OfferListItem> listOffers(?string $externalId = null, ?\BlobSolutions\VcrAm\OfferType $type = null, bool $includeArchived = false)
+ * @method static \BlobSolutions\VcrAm\Model\OfferListItem getOffer(int $offerId)
+ * @method static \BlobSolutions\VcrAm\Model\OfferListItem updateOffer(int $offerId, \BlobSolutions\VcrAm\Input\OfferTitle $title)
  * @method static list<\BlobSolutions\VcrAm\Model\ClassifierSearchItem> searchClassifier(string $query, \BlobSolutions\VcrAm\OfferType $type, \BlobSolutions\VcrAm\Language $language)
  * @method static \BlobSolutions\VcrAm\Model\SaleDetail getSale(int $saleId)
+ * @method static \BlobSolutions\VcrAm\Model\ExchangeRate getExchangeRate(string $currency)
  *
  * @see VcrClient
  */

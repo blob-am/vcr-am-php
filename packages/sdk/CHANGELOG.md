@@ -2,9 +2,37 @@
 
 All notable changes to this package will be documented in this file.
 
-## Unreleased
+## [0.5.0] — 2026-07-09
+
+Brings the SDK level with `/api/v1`: foreign-currency sales, derived-total
+payment, the offer catalogue read/rename endpoints, and a rate preview.
 
 ### Added
+
+- **`VcrClient::listOffers(?string $externalId, ?OfferType $type, bool $includeArchived)`**,
+  **`getOffer(int $offerId)`**, and **`updateOffer(int $offerId, OfferTitle $title)`** —
+  wrap `GET /offers`, `GET /offers/{id}`, and `PATCH /offers/{id}`. Read the
+  catalogue (up to 500 rows, filterable), fetch a single offer, and rename an
+  offer's title going forward — already-issued receipts and the SRC fiscal
+  record are unchanged. New models `Model\OfferListItem`,
+  `Model\OfferDefaultDepartment`.
+- **`SaleItem::$currency`** — optional per-item ISO 4217 input currency for
+  foreign-currency sales (HO-234-N). When set to a non-AMD code, `price` is
+  denominated in that currency and the VCR converts every line to AMD
+  server-side at the previous-business-day CBA rate; the fiscal receipt is
+  always AMD. All foreign-priced items in one sale must share the same
+  currency. Omit (or pass `"AMD"`) for a native AMD line.
+- **`RegisterSaleInput` auto-settle** — a sale now settles by *exactly one* of
+  explicit `amount` (`Input\SaleAmount`) or the new `autoSettle`
+  (`Input\AutoSettle` + `AutoSettleTender` enum), where the VCR derives the
+  whole AMD cart total and charges it to one tender. Required for
+  foreign-currency sales, where the AMD total isn't knowable client-side. Use
+  the `RegisterSaleInput::withAmount()` / `withAutoSettle()` named constructors
+  for a clear call site.
+- **`VcrClient::getExchangeRate(string $currency)`** — wraps `GET /exchange-rate`.
+  Previews the AMD conversion rate the VCR would apply now (CBA mid-market rate,
+  previous business day, HO-234-N). Read-only; rejects `AMD` server-side. New
+  model `Model\ExchangeRate`.
 
 - **`VcrClient::listDepartments()`** — wraps `GET /departments`. Returns
   `list<DepartmentListItem>` with `internalId`, `externalId`, `taxRegime`,
@@ -27,6 +55,13 @@ All notable changes to this package will be documented in this file.
   `Model\CustomerPrepaymentBalance`, `Model\CustomerOpenPrepayment`.
 
 ### Changed
+
+- **`RegisterSaleInput::__construct`** — `$amount` is now nullable
+  (`?SaleAmount`) so it can be omitted in favour of `$autoSettle`; a trailing
+  `?AutoSettle $autoSettle = null` parameter was added. Exactly one of the two
+  must be present (enforced at construction), mirroring the server. Existing
+  `new RegisterSaleInput($cashier, $items, $amount, $buyer)` call sites are
+  unaffected.
 
 - **`Model\PrepaymentDetail`** now also exposes `remaining: float` and
   `state: PrepaymentState`, mirroring the server response. Strictly additive

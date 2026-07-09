@@ -151,6 +151,44 @@ $response = $client->createOffer(new CreateOfferInput(
 echo "Offer #{$response->offerId} created\n";
 ```
 
+### `listOffers(?string $externalId, ?OfferType $type, bool $includeArchived): list<OfferListItem>`
+
+Reads the offer catalogue (up to 500 rows). Handy for checking whether an offer already exists (by `externalId`) before creating it. Archived offers are excluded unless `$includeArchived` is `true`.
+
+```php
+use BlobSolutions\VcrAm\OfferType;
+
+$existing = $client->listOffers(externalId: 'sku-bread');
+if ($existing === []) {
+    // ... create it
+}
+
+$products = $client->listOffers(type: OfferType::Product);
+```
+
+### `getOffer(int $offerId): OfferListItem`
+
+Reads a single offer by its internal numeric id.
+
+```php
+$offer = $client->getOffer(7);
+echo "{$offer->id}: {$offer->classifierCode} ({$offer->defaultMeasureUnit})\n";
+```
+
+### `updateOffer(int $offerId, OfferTitle $title): OfferListItem`
+
+Renames an offer's title. Affects only future receipts — already-issued receipts keep the title they were created with, and the SRC fiscal record is unchanged.
+
+```php
+use BlobSolutions\VcrAm\Input\OfferTitle;
+use BlobSolutions\VcrAm\LocalizationStrategy;
+
+$offer = $client->updateOffer(7, OfferTitle::localized(
+    ['hy' => 'Լատտե', 'en' => 'Latte'],
+    LocalizationStrategy::Translation,
+));
+```
+
 ### `searchClassifier(string $query, OfferType $type, Language $language): list<ClassifierSearchItem>`
 
 Fuzzy-searches the SRC classifier taxonomy. Useful for populating an autocomplete in an offer-creation UI. `Language::Multi` is rejected — pick a concrete language.
@@ -211,6 +249,41 @@ $response = $client->registerSale(new RegisterSaleInput(
         '01234567',
         new SendReceiptToBuyer('billing@example.am', Language::Armenian),
     ),
+));
+```
+
+**Payment: `amount` or `autoSettle`.** A sale settles by *exactly one* of these (the constructor enforces it):
+
+- `amount: new SaleAmount(...)` — explicit AMD per tender, as above.
+- `autoSettle: new AutoSettle(AutoSettleTender::Cash)` — the VCR computes the AMD cart total and charges the whole of it to that one tender. Zero-tap, and the only sane option for a foreign-currency sale (you can't know the AMD total up front). Prefer the `RegisterSaleInput::withAmount()` / `withAutoSettle()` named constructors for a clear call site.
+
+**Foreign-currency sales (HO-234-N).** Set `currency` on each item and price that item in the foreign currency; the VCR converts every line to AMD server-side at the previous-business-day CBA rate. The fiscal receipt is always AMD. All foreign-priced items in one sale must share the same currency, and mixing AMD with foreign lines is rejected. Preview the rate with [`getExchangeRate()`](#getexchangeratestring-currency-exchangerate).
+
+```php
+use BlobSolutions\VcrAm\AutoSettleTender;
+use BlobSolutions\VcrAm\Input\AutoSettle;
+use BlobSolutions\VcrAm\Input\Buyer;
+use BlobSolutions\VcrAm\Input\CashierId;
+use BlobSolutions\VcrAm\Input\Department;
+use BlobSolutions\VcrAm\Input\Offer;
+use BlobSolutions\VcrAm\Input\RegisterSaleInput;
+use BlobSolutions\VcrAm\Input\SaleItem;
+use BlobSolutions\VcrAm\Unit;
+
+$response = $client->registerSale(RegisterSaleInput::withAutoSettle(
+    cashier: CashierId::byInternalId(42),
+    items: [
+        new SaleItem(
+            offer: Offer::existing('sku-usd'),
+            department: new Department(2),
+            quantity: '1',
+            price: '10',        // priced in USD
+            unit: Unit::Piece,
+            currency: 'USD',    // VCR converts to AMD at the CBA rate
+        ),
+    ],
+    autoSettle: new AutoSettle(AutoSettleTender::Cash),
+    buyer: Buyer::individual(),
 ));
 ```
 
@@ -317,6 +390,17 @@ $response = $client->registerPrepaymentRefund(new RegisterPrepaymentRefundInput(
     prepaymentId: 9001,
     reason: RefundReason::CustomerRequest,
 ));
+```
+
+### `getExchangeRate(string $currency): ExchangeRate`
+
+Previews the AMD conversion rate the VCR would apply to a foreign-currency sale registered now — the CBA mid-market rate published on the previous business day (HO-234-N). Read-only; it fiscalizes nothing. `$currency` is a 3-letter ISO 4217 code (case-insensitive); `AMD` is rejected server-side.
+
+```php
+$rate = $client->getExchangeRate('USD');
+
+$amdEquivalent = (float) $usdPrice * $rate->ratePerUnit;
+echo "1 USD = {$rate->ratePerUnit} AMD (rate date {$rate->rateDate})\n";
 ```
 
 ## Error handling

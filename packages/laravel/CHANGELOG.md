@@ -2,9 +2,19 @@
 
 All notable changes to `blob-solutions/laravel-vcr-am` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [0.5.0] — 2026-07-09
 
 ### Added
+
+- **New SDK endpoints exposed through the facade** — synchronises with
+  [`blob-solutions/vcr-am-sdk@0.5.0`](https://packagist.org/packages/blob-solutions/vcr-am-sdk):
+  `VcrAm::listOffers()`, `getOffer()`, `updateOffer()`, and
+  `getExchangeRate()`. `VcrAm::fake()` records and asserts against them like
+  any other endpoint (`assertSent('GET /offers')`,
+  `assertSent('PATCH /offers/7')`, `assertSent('GET /exchange-rate')`) — no
+  adapter changes were needed. Foreign-currency sales (per-item
+  `SaleItem::$currency`) and derived-total payment (`RegisterSaleInput`
+  auto-settle) flow through unchanged.
 
 - **`VcrAm::sandbox()` + `VCR_AM_SANDBOX_API_KEY`** — a parallel `VcrClient`
   is registered under the `vcr-am.sandbox` container binding when
@@ -29,8 +39,8 @@ All notable changes to `blob-solutions/laravel-vcr-am` are documented here. The 
 
 ### Changed
 
-- Requires `blob-solutions/vcr-am-sdk` with the new `whoami()` endpoint
-  (currently `dev-main`, will resolve to the next tagged SDK release).
+- Requires `blob-solutions/vcr-am-sdk@^0.5.0` (offers read/rename,
+  foreign-currency sales, auto-settle, and the exchange-rate preview).
 
 ## [0.4.0] — 2026-05-13
 

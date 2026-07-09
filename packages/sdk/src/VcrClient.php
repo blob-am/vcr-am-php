@@ -10,6 +10,7 @@ use BlobSolutions\VcrAm\Exception\VcrValidationException;
 use BlobSolutions\VcrAm\Input\CreateCashierInput;
 use BlobSolutions\VcrAm\Input\CreateDepartmentInput;
 use BlobSolutions\VcrAm\Input\CreateOfferInput;
+use BlobSolutions\VcrAm\Input\OfferTitle;
 use BlobSolutions\VcrAm\Input\RegisterPrepaymentInput;
 use BlobSolutions\VcrAm\Input\RegisterPrepaymentRefundInput;
 use BlobSolutions\VcrAm\Input\RegisterSaleInput;
@@ -22,6 +23,8 @@ use BlobSolutions\VcrAm\Model\CreateDepartmentResponse;
 use BlobSolutions\VcrAm\Model\CreateOfferResponse;
 use BlobSolutions\VcrAm\Model\CustomerPrepaymentBalance;
 use BlobSolutions\VcrAm\Model\DepartmentListItem;
+use BlobSolutions\VcrAm\Model\ExchangeRate;
+use BlobSolutions\VcrAm\Model\OfferListItem;
 use BlobSolutions\VcrAm\Model\PrepaymentDetail;
 use BlobSolutions\VcrAm\Model\PrepaymentListItem;
 use BlobSolutions\VcrAm\Model\RegisterPrepaymentRefundResponse;
@@ -54,7 +57,7 @@ final class VcrClient
 {
     public const DEFAULT_BASE_URL = 'https://vcr.am/api/v1';
 
-    public const VERSION = '0.1.1';
+    public const VERSION = '0.5.0';
 
     /**
      * Cap on how many bytes of an error response body are included in the
@@ -423,6 +426,107 @@ final class VcrClient
     }
 
     /**
+     * Lists offers belonging to the calling VCR. The server caps the response
+     * at 500 rows; narrow with `$externalId` / `$type` for larger catalogues.
+     * Archived offers are excluded unless `$includeArchived` is `true`.
+     *
+     * A common use is checking whether an offer already exists (by
+     * `$externalId`) before creating it.
+     *
+     * @param ?string    $externalId      Exact-match filter by merchant-provided external id
+     * @param ?OfferType $type            Filter by offer type (product / service)
+     * @param bool       $includeArchived When `true`, also include archived offers
+     *
+     * @return list<OfferListItem>
+     *
+     * @throws VcrApiException
+     * @throws VcrNetworkException
+     * @throws VcrValidationException
+     */
+    public function listOffers(?string $externalId = null, ?OfferType $type = null, bool $includeArchived = false): array
+    {
+        $query = [];
+        if ($externalId !== null) {
+            $query['externalId'] = $externalId;
+        }
+        if ($type !== null) {
+            $query['type'] = $type->value;
+        }
+        if ($includeArchived) {
+            $query['includeArchived'] = 'true';
+        }
+
+        /** @var list<OfferListItem> $result */
+        $result = $this->request(
+            'GET',
+            '/offers',
+            'list<' . OfferListItem::class . '>',
+            null,
+            $query === [] ? null : $query,
+        );
+
+        return $result;
+    }
+
+    /**
+     * Reads back a single offer by its VCR-internal numeric id.
+     *
+     * @param int $offerId The numeric offer id — e.g. the value returned by
+     *                     {@see self::createOffer()} as `CreateOfferResponse::$offerId`.
+     *
+     * @throws InvalidArgumentException When `$offerId` is negative
+     * @throws VcrApiException
+     * @throws VcrNetworkException
+     * @throws VcrValidationException
+     */
+    public function getOffer(int $offerId): OfferListItem
+    {
+        if ($offerId < 0) {
+            throw new InvalidArgumentException('offerId must be non-negative.');
+        }
+
+        /** @var OfferListItem $result */
+        $result = $this->request(
+            'GET',
+            sprintf('/offers/%d', $offerId),
+            OfferListItem::class,
+        );
+
+        return $result;
+    }
+
+    /**
+     * Renames an offer's title. Affects only future receipts — already-issued
+     * receipts keep the title they were created with, and the SRC fiscal record
+     * is unchanged. Missing `en` / `ru` are filled per the title's localisation
+     * strategy, exactly as on offer creation. Returns the updated offer.
+     *
+     * @param int        $offerId The offer to rename
+     * @param OfferTitle $title   The new title (universal or localised)
+     *
+     * @throws InvalidArgumentException When `$offerId` is negative
+     * @throws VcrApiException
+     * @throws VcrNetworkException
+     * @throws VcrValidationException
+     */
+    public function updateOffer(int $offerId, OfferTitle $title): OfferListItem
+    {
+        if ($offerId < 0) {
+            throw new InvalidArgumentException('offerId must be non-negative.');
+        }
+
+        /** @var OfferListItem $result */
+        $result = $this->request(
+            'PATCH',
+            sprintf('/offers/%d', $offerId),
+            OfferListItem::class,
+            ['title' => $title->jsonSerialize()],
+        );
+
+        return $result;
+    }
+
+    /**
      * Searches the SRC classifier (product/service taxonomy) for entries
      * matching `$query` in the given language. Returns at most a handful
      * of fuzzy-matched items — typically used to populate an offer-creation
@@ -487,6 +591,41 @@ final class VcrClient
             'GET',
             sprintf('/sales/%d', $saleId),
             SaleDetail::class,
+        );
+
+        return $result;
+    }
+
+    /**
+     * Previews the AMD conversion rate the VCR would apply to a foreign-currency
+     * sale registered now — the CBA mid-market rate published on the previous
+     * business day (Tax Code art. 16, HO-234-N). Use it to show a buyer the AMD
+     * equivalent before charging. The sale itself is converted server-side from
+     * each item's `currency` + `price` (see {@see Input\SaleItem::$currency});
+     * this endpoint is a read-only preview and fiscalises nothing.
+     *
+     * @param string $currency 3-letter ISO 4217 code, case-insensitive. `AMD`
+     *                         is the native receipt currency and is rejected by
+     *                         the server (surfaced as a {@see VcrApiException}).
+     *
+     * @throws InvalidArgumentException When `$currency` is not a 3-letter code
+     * @throws VcrApiException
+     * @throws VcrNetworkException
+     * @throws VcrValidationException
+     */
+    public function getExchangeRate(string $currency): ExchangeRate
+    {
+        if (preg_match('/^[A-Za-z]{3}$/', $currency) !== 1) {
+            throw new InvalidArgumentException('currency must be a 3-letter ISO 4217 code (e.g. "USD").');
+        }
+
+        /** @var ExchangeRate $result */
+        $result = $this->request(
+            'GET',
+            '/exchange-rate',
+            ExchangeRate::class,
+            null,
+            ['currency' => $currency],
         );
 
         return $result;

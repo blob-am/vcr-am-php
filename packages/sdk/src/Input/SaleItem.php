@@ -22,6 +22,17 @@ use JsonSerializable;
  * the SDK preserves item-level grouping so refund flows can correctly
  * subset codes against the original sale. Omit the field for unmarked
  * goods.
+ *
+ * `currency` is an optional ISO 4217 input currency for foreign-currency
+ * sales (HO-234-N). When set to a non-AMD code, `price` is denominated in
+ * that currency and the VCR converts every line to AMD server-side at the
+ * previous-business-day CBA rate; the fiscal receipt is always issued in
+ * AMD. All foreign-priced items in one sale must share the same currency —
+ * mixing two currencies, or AMD and foreign lines, in one sale is rejected
+ * by the server. Omit the field (or pass `"AMD"`) for a native AMD line.
+ * Pair with {@see RegisterSaleInput::withAutoSettle()} so the AMD total is
+ * derived server-side, and preview the applied rate via
+ * {@see \BlobSolutions\VcrAm\VcrClient::getExchangeRate()}.
  */
 final readonly class SaleItem implements JsonSerializable
 {
@@ -37,6 +48,7 @@ final readonly class SaleItem implements JsonSerializable
         public ?Discounts $discounts = null,
         public ?string $totalAmountTolerance = null,
         public ?array $emarks = null,
+        public ?string $currency = null,
     ) {
         if (preg_match('/^\d+(\.\d+)?$/', $quantity) !== 1) {
             throw new InvalidArgumentException('quantity must be a non-negative decimal string (e.g. "1" or "1.500").');
@@ -56,6 +68,10 @@ final readonly class SaleItem implements JsonSerializable
                     throw new InvalidArgumentException('emarks entries must not be empty.');
                 }
             }
+        }
+
+        if ($currency !== null && preg_match('/^[A-Za-z]{3}$/', $currency) !== 1) {
+            throw new InvalidArgumentException('currency must be a 3-letter ISO 4217 code (e.g. "USD"). Omit the field for a native AMD line.');
         }
     }
 
@@ -82,6 +98,10 @@ final readonly class SaleItem implements JsonSerializable
 
         if ($this->emarks !== null) {
             $payload['emarks'] = $this->emarks;
+        }
+
+        if ($this->currency !== null) {
+            $payload['currency'] = $this->currency;
         }
 
         return $payload;
