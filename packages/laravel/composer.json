@@ -91,7 +91,10 @@
             "type": "path",
             "url": "../sdk",
             "options": {
-                "symlink": true
+                "symlink": true,
+                "versions": {
+                    "blob-solutions/vcr-am-sdk": "dev-main"
+                }
             }
         }
     ],
