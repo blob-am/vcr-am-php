@@ -25,6 +25,7 @@ final readonly class SaleDetail
         public int $id,
         public string $createdAt,
         public ?string $buyerTin,
+        public ?string $comment,
         public float $cashAmount,
         public float $nonCashAmount,
         public float $prepaymentAmount,

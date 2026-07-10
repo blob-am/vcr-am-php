@@ -28,6 +28,7 @@ function makeSampleSaleDetailJson(): string
         'id' => 4711,
         'createdAt' => '2026-05-02T08:30:00.000Z',
         'buyerTin' => null,
+        'comment' => 'ext-ref-42',
         'cashAmount' => 1500,
         'nonCashAmount' => 0,
         'prepaymentAmount' => 0,
@@ -90,6 +91,7 @@ it('parses a complete sale detail response into nested DTOs', function (): void 
         ->and($sale->id)->toBe(4711)
         ->and($sale->createdAt)->toBe('2026-05-02T08:30:00.000Z')
         ->and($sale->buyerTin)->toBeNull()
+        ->and($sale->comment)->toBe('ext-ref-42')
         ->and($sale->cashAmount)->toBe(1500.0)
         ->and($sale->refunds)->toBe([])
         ->and($sale->cashier)->toBeInstanceOf(Cashier::class)
@@ -124,6 +126,7 @@ it('handles a null receipt and a refund with its own receipt', function (): void
         'id' => 5000,
         'createdAt' => '2026-05-02T09:00:00.000Z',
         'buyerTin' => '12345678',
+        'comment' => null,
         'cashAmount' => 0,
         'nonCashAmount' => 1000,
         'prepaymentAmount' => 0,

@@ -2,6 +2,22 @@
 
 All notable changes to this package will be documented in this file.
 
+## [0.6.0] — 2026-07-10
+
+### Added
+
+- **`RegisterSaleInput` now accepts an optional `comment`** — a merchant-internal
+  note on the sale, e.g. an external payment reference for reconciliation. Pass
+  it via the constructor or either factory
+  (`RegisterSaleInput::withAmount(..., comment: 'Stripe pi_3Qc...')`,
+  `withAutoSettle(..., comment: ...)`). Max 500 characters; the server strips
+  control characters and trims whitespace. The `comment` key is appended to the
+  wire payload only when non-null, so existing callers are byte-compatible. It
+  is purely internal — never printed on the buyer's receipt nor sent to the tax
+  authority.
+- **`SaleDetail::$comment`** — `getSale()` now exposes the sale's comment (or
+  `null` when none was set).
+
 ## [0.5.0] — 2026-07-09
 
 Brings the SDK level with `/api/v1`: foreign-currency sales, derived-total

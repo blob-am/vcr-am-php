@@ -72,6 +72,33 @@ it('json_encodes a minimal valid sale to the wire format', function (): void {
     ], JSON_THROW_ON_ERROR));
 });
 
+it('appends comment to the wire format when provided', function (): void {
+    $input = RegisterSaleInput::withAmount(
+        cashier: CashierId::byDeskId('desk-1'),
+        items: oneItem(),
+        amount: new SaleAmount(cash: '1500'),
+        buyer: Buyer::individual(),
+        comment: 'ext-ref-42',
+    );
+
+    $decoded = json_decode(json_encode($input, JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
+
+    expect($decoded)->toHaveKey('comment', 'ext-ref-42');
+});
+
+it('omits the comment key entirely when not provided', function (): void {
+    $input = RegisterSaleInput::withAmount(
+        cashier: CashierId::byDeskId('desk-1'),
+        items: oneItem(),
+        amount: new SaleAmount(cash: '1500'),
+        buyer: Buyer::individual(),
+    );
+
+    $decoded = json_decode(json_encode($input, JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
+
+    expect($decoded)->not->toHaveKey('comment');
+});
+
 it('rejects a request that carries neither amount nor autoSettle', function (): void {
     new RegisterSaleInput(
         cashier: CashierId::byDeskId('desk-1'),

@@ -37,6 +37,12 @@ final readonly class RegisterSaleInput implements JsonSerializable
      *                                   of `$amount` or `$autoSettle`.
      * @param ?AutoSettle    $autoSettle Derived-total settlement. Provide exactly
      *                                   one of `$amount` or `$autoSettle`.
+     * @param ?string        $comment    Optional merchant-internal note (e.g. an
+     *                                   external payment reference). Max 500 chars;
+     *                                   the server strips control characters and
+     *                                   trims whitespace. Purely internal — never
+     *                                   printed on the buyer's receipt nor sent to
+     *                                   the tax authority.
      */
     public function __construct(
         public CashierId $cashier,
@@ -44,6 +50,7 @@ final readonly class RegisterSaleInput implements JsonSerializable
         public ?SaleAmount $amount,
         public Buyer $buyer,
         public ?AutoSettle $autoSettle = null,
+        public ?string $comment = null,
     ) {
         if ($items === []) {
             throw new InvalidArgumentException('A sale must contain at least one item.');
@@ -64,9 +71,9 @@ final readonly class RegisterSaleInput implements JsonSerializable
      *
      * @param list<SaleItem> $items
      */
-    public static function withAmount(CashierId $cashier, array $items, SaleAmount $amount, Buyer $buyer): self
+    public static function withAmount(CashierId $cashier, array $items, SaleAmount $amount, Buyer $buyer, ?string $comment = null): self
     {
-        return new self($cashier, $items, $amount, $buyer);
+        return new self($cashier, $items, $amount, $buyer, comment: $comment);
     }
 
     /**
@@ -75,9 +82,9 @@ final readonly class RegisterSaleInput implements JsonSerializable
      *
      * @param list<SaleItem> $items
      */
-    public static function withAutoSettle(CashierId $cashier, array $items, AutoSettle $autoSettle, Buyer $buyer): self
+    public static function withAutoSettle(CashierId $cashier, array $items, AutoSettle $autoSettle, Buyer $buyer, ?string $comment = null): self
     {
-        return new self($cashier, $items, null, $buyer, $autoSettle);
+        return new self($cashier, $items, null, $buyer, $autoSettle, $comment);
     }
 
     /**
@@ -103,6 +110,10 @@ final readonly class RegisterSaleInput implements JsonSerializable
 
         if ($this->autoSettle !== null) {
             $payload['autoSettle'] = $this->autoSettle;
+        }
+
+        if ($this->comment !== null) {
+            $payload['comment'] = $this->comment;
         }
 
         return $payload;
