@@ -57,7 +57,7 @@ final class VcrClient
 {
     public const DEFAULT_BASE_URL = 'https://vcr.am/api/v1';
 
-    public const VERSION = '0.5.0';
+    public const VERSION = '0.6.0';
 
     /**
      * Cap on how many bytes of an error response body are included in the
