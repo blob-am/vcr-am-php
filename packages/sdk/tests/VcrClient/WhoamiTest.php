@@ -5,7 +5,6 @@ declare(strict_types=1);
 use BlobSolutions\VcrAm\Exception\VcrApiException;
 use BlobSolutions\VcrAm\Exception\VcrValidationException;
 use BlobSolutions\VcrAm\Model\AccountBusinessEntity;
-use BlobSolutions\VcrAm\Model\AccountInfo;
 use BlobSolutions\VcrAm\VcrMode;
 use Nyholm\Psr7\Response;
 use PHPUnit\Framework\Assert;
@@ -43,7 +42,10 @@ it('parses a production VCR identity', function (): void {
 
     $info = $client->whoami();
 
-    Assert::assertInstanceOf(AccountInfo::class, $info);
+    // No assertInstanceOf on $info: whoami() declares AccountInfo as its
+    // return type, so the check can never fail and PHPStan rejects it. What
+    // is worth asserting is that the envelope was parsed into the right
+    // fields, which is what follows.
     expect($info->vcrId)->toBe(42)
         ->and($info->crn)->toBe('1234567890123')
         ->and($info->mode)->toBe(VcrMode::Production)
