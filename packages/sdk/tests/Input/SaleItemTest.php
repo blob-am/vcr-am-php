@@ -16,7 +16,6 @@ function makeMinimalSaleItem(): SaleItem
 {
     return new SaleItem(
         offer: Offer::existing('sku-1'),
-        department: new Department(1),
         quantity: '1',
         price: '100',
         unit: Unit::Piece,
@@ -27,17 +26,40 @@ it('serializes a minimal item without optional fields', function (): void {
     expect(json_encode(makeMinimalSaleItem(), JSON_THROW_ON_ERROR))
         ->toBe(json_encode([
             'offer' => ['externalId' => 'sku-1'],
-            'department' => ['id' => 1],
             'quantity' => '1',
             'price' => '100',
             'unit' => 'pc',
         ], JSON_THROW_ON_ERROR));
 });
 
+it('omits the department entirely so the server inherits the offer\'s', function (): void {
+    // Absent, not null: the server distinguishes "inherit" from an explicit
+    // value, and a null fails its schema.
+    expect(json_encode(makeMinimalSaleItem(), JSON_THROW_ON_ERROR))->not->toContain('department');
+});
+
+it('serializes an explicit department that overrides the offer\'s', function (): void {
+    $item = new SaleItem(
+        offer: Offer::existing('sku-1'),
+        quantity: '1',
+        price: '100',
+        unit: Unit::Piece,
+        department: new Department(2),
+    );
+
+    expect(json_encode($item, JSON_THROW_ON_ERROR))
+        ->toBe(json_encode([
+            'offer' => ['externalId' => 'sku-1'],
+            'quantity' => '1',
+            'price' => '100',
+            'unit' => 'pc',
+            'department' => ['id' => 2],
+        ], JSON_THROW_ON_ERROR));
+});
+
 it('serializes an item with discounts', function (): void {
     $item = new SaleItem(
         offer: Offer::existing('sku-1'),
-        department: new Department(1),
         quantity: '2',
         price: '500',
         unit: Unit::Kilogram,
@@ -50,7 +72,6 @@ it('serializes an item with discounts', function (): void {
     expect(json_encode($item, JSON_THROW_ON_ERROR))
         ->toBe(json_encode([
             'offer' => ['externalId' => 'sku-1'],
-            'department' => ['id' => 1],
             'quantity' => '2',
             'price' => '500',
             'unit' => 'kg',
@@ -64,7 +85,6 @@ it('serializes an item with discounts', function (): void {
 it('serializes an item with totalAmountTolerance', function (): void {
     $item = new SaleItem(
         offer: Offer::existing('sku-1'),
-        department: new Department(1),
         quantity: '1',
         price: '100',
         unit: Unit::Piece,
@@ -78,7 +98,6 @@ it('serializes an item with totalAmountTolerance', function (): void {
 it('rejects an empty quantity', function (): void {
     new SaleItem(
         offer: Offer::existing('sku-1'),
-        department: new Department(1),
         quantity: '   ',
         price: '100',
         unit: Unit::Piece,
@@ -88,7 +107,6 @@ it('rejects an empty quantity', function (): void {
 it('rejects a non-numeric quantity', function (): void {
     new SaleItem(
         offer: Offer::existing('sku-1'),
-        department: new Department(1),
         quantity: '1.5kg',
         price: '100',
         unit: Unit::Piece,
@@ -98,7 +116,6 @@ it('rejects a non-numeric quantity', function (): void {
 it('rejects an empty price', function (): void {
     new SaleItem(
         offer: Offer::existing('sku-1'),
-        department: new Department(1),
         quantity: '1',
         price: '   ',
         unit: Unit::Piece,
@@ -108,7 +125,6 @@ it('rejects an empty price', function (): void {
 it('rejects a negative price', function (): void {
     new SaleItem(
         offer: Offer::existing('sku-1'),
-        department: new Department(1),
         quantity: '1',
         price: '-50',
         unit: Unit::Piece,
@@ -118,7 +134,6 @@ it('rejects a negative price', function (): void {
 it('rejects an empty totalAmountTolerance string when provided', function (): void {
     new SaleItem(
         offer: Offer::existing('sku-1'),
-        department: new Department(1),
         quantity: '1',
         price: '100',
         unit: Unit::Piece,
@@ -129,7 +144,6 @@ it('rejects an empty totalAmountTolerance string when provided', function (): vo
 it('serializes an item with emarks', function (): void {
     $item = new SaleItem(
         offer: Offer::existing('sku-1'),
-        department: new Department(1),
         quantity: '2',
         price: '7500',
         unit: Unit::Bottle,
@@ -139,7 +153,6 @@ it('serializes an item with emarks', function (): void {
     expect(json_encode($item, JSON_THROW_ON_ERROR))
         ->toBe(json_encode([
             'offer' => ['externalId' => 'sku-1'],
-            'department' => ['id' => 1],
             'quantity' => '2',
             'price' => '7500',
             'unit' => 'bottle',
@@ -156,7 +169,6 @@ it('omits the emarks field when null', function (): void {
 it('omits the emarks field when explicitly null', function (): void {
     $item = new SaleItem(
         offer: Offer::existing('sku-1'),
-        department: new Department(1),
         quantity: '1',
         price: '100',
         unit: Unit::Piece,
@@ -169,7 +181,6 @@ it('omits the emarks field when explicitly null', function (): void {
 it('serializes an empty emarks array as []', function (): void {
     $item = new SaleItem(
         offer: Offer::existing('sku-1'),
-        department: new Department(1),
         quantity: '1',
         price: '100',
         unit: Unit::Piece,
@@ -182,7 +193,6 @@ it('serializes an empty emarks array as []', function (): void {
 it('rejects an empty emark entry', function (): void {
     new SaleItem(
         offer: Offer::existing('sku-1'),
-        department: new Department(1),
         quantity: '1',
         price: '100',
         unit: Unit::Piece,
@@ -193,7 +203,6 @@ it('rejects an empty emark entry', function (): void {
 it('serializes an item with a foreign currency (price stays as typed)', function (): void {
     $item = new SaleItem(
         offer: Offer::existing('sku-1'),
-        department: new Department(1),
         quantity: '1',
         price: '10',
         unit: Unit::Piece,
@@ -203,7 +212,6 @@ it('serializes an item with a foreign currency (price stays as typed)', function
     expect(json_encode($item, JSON_THROW_ON_ERROR))
         ->toBe(json_encode([
             'offer' => ['externalId' => 'sku-1'],
-            'department' => ['id' => 1],
             'quantity' => '1',
             'price' => '10',
             'unit' => 'pc',
@@ -218,7 +226,6 @@ it('omits the currency field when null (native AMD line)', function (): void {
 it('rejects a currency that is not a 3-letter code', function (): void {
     new SaleItem(
         offer: Offer::existing('sku-1'),
-        department: new Department(1),
         quantity: '1',
         price: '100',
         unit: Unit::Piece,

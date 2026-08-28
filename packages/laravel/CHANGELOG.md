@@ -2,6 +2,22 @@
 
 All notable changes to `blob-solutions/laravel-vcr-am` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] — 2026-08-28
+
+### Changed
+
+- **`SaleItem::$department` is optional and has moved** — synchronises with
+  [`blob-solutions/vcr-am-sdk@0.8.0`](https://packagist.org/packages/blob-solutions/vcr-am-sdk).
+  Omit it and the line inherits the offer's department, which is what you
+  almost always want: the department carries the tax regime, and a hard-coded
+  `new Department(1)` is the VAT one on every register, including registers
+  that owe no VAT.
+
+  The adapter passes `SaleItem` through untouched, so nothing in this package
+  changed — but code in your application that builds items **positionally**
+  breaks, because `department` moved to the head of the optional tail. Named
+  arguments are unaffected. See the SDK changelog for the full note.
+
 ## [0.5.0] — 2026-07-09
 
 ### Added

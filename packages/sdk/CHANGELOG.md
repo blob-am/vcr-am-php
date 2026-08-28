@@ -2,6 +2,28 @@
 
 All notable changes to this package will be documented in this file.
 
+## [0.8.0] — 2026-08-28
+
+### Changed — `SaleItem::$department` is now optional (breaking)
+
+- **Omit `department` and the line inherits the department of the offer it references** — for an inline new offer, the `defaultDepartment` declared on it. Passing one explicitly still works and still wins, which is what you want when you deliberately sell the same SKU out of a second department.
+
+  The field was required, so every integration had to name a department per line, and the natural thing to write is the first id. That is not a harmless default: departments carry the tax regime, every register is created with one department per regime in a fixed order, and `new Department(1)` is the VAT one on every register whether or not the merchant owes VAT. Nothing rejects the mismatch — the receipt simply prints a VAT line the merchant does not owe, and a fiscal receipt can only be refunded and reissued, never corrected. We found this in the field.
+
+  ```diff
+   new SaleItem(
+       offer: Offer::existing('sku-bread'),
+  -    department: new Department(5),
+       quantity: '2',
+       price: '750',
+       unit: Unit::Piece,
+   ),
+  ```
+
+  **Breaking:** PHP cannot make a middle parameter optional, so `department` moved from second position to the head of the optional tail — the new order is `offer, quantity, price, unit, department, discounts, totalAmountTolerance, emarks, currency`. Named arguments (what the README has always used, and what the constructor is designed for) are unaffected. Positional callers get a `TypeError` at the call site — a `Department` where a `string $quantity` is expected — not a silently mis-booked receipt.
+
+  Requires the server-side change shipped alongside it; against an older deployment an omitted `department` is a `422`.
+
 ## [0.7.0] — 2026-08-28
 
 ### Fixed — error envelope was never parsed (breaking)

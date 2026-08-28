@@ -36,7 +36,6 @@ Register a sale of two loaves of bread, paid in cash:
 ```php
 use BlobSolutions\VcrAm\Input\Buyer;
 use BlobSolutions\VcrAm\Input\CashierId;
-use BlobSolutions\VcrAm\Input\Department;
 use BlobSolutions\VcrAm\Input\Offer;
 use BlobSolutions\VcrAm\Input\RegisterSaleInput;
 use BlobSolutions\VcrAm\Input\SaleAmount;
@@ -51,7 +50,6 @@ $response = $client->registerSale(new RegisterSaleInput(
     items: [
         new SaleItem(
             offer: Offer::existing('sku-bread'),
-            department: new Department(5),
             quantity: '2',
             price: '750',
             unit: Unit::Piece,
@@ -105,6 +103,8 @@ echo "Cashier #{$response->id} provisioned (deskId={$response->deskId})\n";
 ### `createDepartment(CreateDepartmentInput $input): CreateDepartmentResponse`
 
 Creates a department (tax-regime-bound bucket of offers).
+
+The department, not the offer, decides the tax regime printed on the receipt. Every register is created with one department per regime — VAT, VAT-exempt, turnover tax, micro-enterprise — numbered in that order, which makes `new Department(1)` the VAT one on every register whether or not the merchant owes VAT. Call `listDepartments()` once, read `taxRegime`, and set the offer's `defaultDepartment` to the id that matches how the business is actually registered; sale items then leave `department` out and inherit it. Nothing rejects a sale booked under the wrong regime, and a fiscal receipt can only be refunded and reissued, never corrected.
 
 ```php
 use BlobSolutions\VcrAm\Input\CreateDepartmentInput;
@@ -238,7 +238,6 @@ $response = $client->registerSale(new RegisterSaleInput(
                 defaultMeasureUnit: Unit::Hour,
                 defaultDepartment: new Department(2),
             ),
-            department: new Department(2),
             quantity: '1',
             price: '50000',
             unit: Unit::Hour,
@@ -264,7 +263,6 @@ use BlobSolutions\VcrAm\AutoSettleTender;
 use BlobSolutions\VcrAm\Input\AutoSettle;
 use BlobSolutions\VcrAm\Input\Buyer;
 use BlobSolutions\VcrAm\Input\CashierId;
-use BlobSolutions\VcrAm\Input\Department;
 use BlobSolutions\VcrAm\Input\Offer;
 use BlobSolutions\VcrAm\Input\RegisterSaleInput;
 use BlobSolutions\VcrAm\Input\SaleItem;
@@ -275,7 +273,6 @@ $response = $client->registerSale(RegisterSaleInput::withAutoSettle(
     items: [
         new SaleItem(
             offer: Offer::existing('sku-usd'),
-            department: new Department(2),
             quantity: '1',
             price: '10',        // priced in USD
             unit: Unit::Piece,

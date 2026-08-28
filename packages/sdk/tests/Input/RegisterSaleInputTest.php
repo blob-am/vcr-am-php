@@ -61,10 +61,10 @@ it('json_encodes a minimal valid sale to the wire format', function (): void {
         'items' => [
             [
                 'offer' => ['externalId' => 'sku-bread'],
-                'department' => ['id' => 5],
                 'quantity' => '2',
                 'price' => '750',
                 'unit' => 'pc',
+                'department' => ['id' => 5],
             ],
         ],
         'amount' => ['cash' => '1500'],
@@ -133,10 +133,10 @@ it('json_encodes an autoSettle sale to the wire format (no amount key)', functio
         'items' => [
             [
                 'offer' => ['externalId' => 'sku-bread'],
-                'department' => ['id' => 5],
                 'quantity' => '2',
                 'price' => '750',
                 'unit' => 'pc',
+                'department' => ['id' => 5],
             ],
         ],
         'buyer' => ['type' => 'individual'],

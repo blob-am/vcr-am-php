@@ -88,10 +88,10 @@ it('sends a POST request to /sales with the JSON-encoded input', function (): vo
         'items' => [
             [
                 'offer' => ['externalId' => 'sku-bread'],
-                'department' => ['id' => 5],
                 'quantity' => '2',
                 'price' => '750',
                 'unit' => 'pc',
+                'department' => ['id' => 5],
             ],
         ],
         'amount' => ['cash' => '1500'],
@@ -137,10 +137,10 @@ it('sends a foreign-currency auto-settle sale on the wire (per-item currency, no
         'items' => [
             [
                 'offer' => ['externalId' => 'sku-usd'],
-                'department' => ['id' => 5],
                 'quantity' => '1',
                 'price' => '10',
                 'unit' => 'pc',
+                'department' => ['id' => 5],
                 'currency' => 'USD',
             ],
         ],

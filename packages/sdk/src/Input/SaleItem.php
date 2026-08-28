@@ -15,6 +15,17 @@ use JsonSerializable;
  * strings to preserve precision over the wire — consistent with the
  * TypeScript SDK and the underlying Prisma `Decimal` type.
  *
+ * `department` is optional and should normally be left out: the line then
+ * inherits the department of the offer it references, which for an inline
+ * new offer is the one declared on it. The department — not the offer —
+ * decides the tax regime printed on the receipt, and every register is
+ * created with one department per regime, numbered in a fixed order. A
+ * hard-coded `new Department(1)` is therefore the VAT department on every
+ * register, including registers that owe no VAT; nothing rejects the
+ * mismatch and a fiscal receipt can only be refunded and reissued, never
+ * corrected. Pass it explicitly only to override the offer — selling the
+ * same SKU out of a second department.
+ *
  * `emarks` carries identifiers of excise marks consumed by this line item
  * (alcohol, tobacco, pharmaceuticals — Govt Decision 1976-N, effective
  * 2026-05-01). Per-item by domain design — the wire format flattens them
@@ -41,10 +52,10 @@ final readonly class SaleItem implements JsonSerializable
      */
     public function __construct(
         public Offer $offer,
-        public Department $department,
         public string $quantity,
         public string $price,
         public Unit $unit,
+        public ?Department $department = null,
         public ?Discounts $discounts = null,
         public ?string $totalAmountTolerance = null,
         public ?array $emarks = null,
@@ -82,11 +93,16 @@ final readonly class SaleItem implements JsonSerializable
     {
         $payload = [
             'offer' => $this->offer,
-            'department' => $this->department,
             'quantity' => $this->quantity,
             'price' => $this->price,
             'unit' => $this->unit->value,
         ];
+
+        // Absent, not null: the server distinguishes "inherit the offer's
+        // department" from an explicit value, and a null fails its schema.
+        if ($this->department !== null) {
+            $payload['department'] = $this->department;
+        }
 
         if ($this->discounts !== null) {
             $payload['discounts'] = $this->discounts;
