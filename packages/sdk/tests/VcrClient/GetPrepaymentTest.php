@@ -127,13 +127,13 @@ it('rejects a negative prepaymentId', function (): void {
 
 it('throws VcrApiException on HTTP 404', function (): void {
     [$client, $mock] = makeMockedClient();
-    $mock->addResponse(new Response(404, ['Content-Type' => 'application/json'], '{"code":"NOT_FOUND","message":"Prepayment 9001 not found"}'));
+    $mock->addResponse(new Response(404, ['Content-Type' => 'application/json'], '{"error":"Prepayment 9001 not found"}'));
 
     try {
         $client->getPrepayment(9001);
         Assert::fail('expected VcrApiException');
     } catch (VcrApiException $e) {
         expect($e->statusCode)->toBe(404)
-            ->and($e->apiErrorCode)->toBe('NOT_FOUND');
+            ->and($e->apiErrorMessage)->toBe('Prepayment 9001 not found');
     }
 });

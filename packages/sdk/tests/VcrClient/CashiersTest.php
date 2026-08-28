@@ -90,7 +90,7 @@ it('does not attach a request body to a GET', function (): void {
 
 it('throws VcrApiException on HTTP 401 with parsed error envelope', function (): void {
     [$client, $mock] = makeMockedClient();
-    $body = json_encode(['code' => 'INVALID_TOKEN', 'message' => 'API key revoked'], JSON_THROW_ON_ERROR);
+    $body = json_encode(['error' => 'API key revoked'], JSON_THROW_ON_ERROR);
     $mock->addResponse(new Response(401, ['Content-Type' => 'application/json'], $body));
 
     try {
@@ -98,7 +98,6 @@ it('throws VcrApiException on HTTP 401 with parsed error envelope', function ():
         Assert::fail('expected VcrApiException');
     } catch (VcrApiException $e) {
         expect($e->statusCode)->toBe(401)
-            ->and($e->apiErrorCode)->toBe('INVALID_TOKEN')
             ->and($e->apiErrorMessage)->toBe('API key revoked');
     }
 });
@@ -112,7 +111,6 @@ it('throws VcrApiException on HTTP 500 even when the body is HTML, with null err
         Assert::fail('expected VcrApiException');
     } catch (VcrApiException $e) {
         expect($e->statusCode)->toBe(500)
-            ->and($e->apiErrorCode)->toBeNull()
             ->and($e->apiErrorMessage)->toBeNull()
             ->and($e->rawBody)->toBe('<html><body>500</body></html>');
     }
@@ -161,9 +159,9 @@ it('throws VcrValidationException when the JSON root is a scalar', function (): 
     }
 });
 
-it('handles a 4xx response whose JSON body is a non-object root (extractApiError null path)', function (): void {
+it('handles a 4xx response whose JSON body is a non-object root', function (): void {
     [$client, $mock] = makeMockedClient();
-    // Valid JSON but a scalar root — extractApiError can't pluck code/message.
+    // Valid JSON but a scalar root — there is no envelope to read.
     $mock->addResponse(new Response(500, ['Content-Type' => 'application/json'], '"server exploded"'));
 
     try {
@@ -171,16 +169,16 @@ it('handles a 4xx response whose JSON body is a non-object root (extractApiError
         Assert::fail('expected VcrApiException');
     } catch (VcrApiException $e) {
         expect($e->statusCode)->toBe(500)
-            ->and($e->apiErrorCode)->toBeNull()
             ->and($e->apiErrorMessage)->toBeNull()
             ->and($e->rawBody)->toBe('"server exploded"');
     }
 });
 
-it('handles a 4xx response whose error envelope has non-string code and message', function (): void {
+it('ignores a non-string error field rather than coercing it', function (): void {
     [$client, $mock] = makeMockedClient();
-    // Server bug: emits code/message as non-strings. Defensive narrowing kicks in.
-    $body = json_encode(['code' => 42, 'message' => null], JSON_THROW_ON_ERROR);
+    // Server bug: emits `error` as a non-string. Defensive narrowing kicks in,
+    // and rawBody still carries the whole thing for diagnosis.
+    $body = json_encode(['error' => 42], JSON_THROW_ON_ERROR);
     $mock->addResponse(new Response(400, ['Content-Type' => 'application/json'], $body));
 
     try {
@@ -188,8 +186,149 @@ it('handles a 4xx response whose error envelope has non-string code and message'
         Assert::fail('expected VcrApiException');
     } catch (VcrApiException $e) {
         expect($e->statusCode)->toBe(400)
-            ->and($e->apiErrorCode)->toBeNull()
-            ->and($e->apiErrorMessage)->toBeNull();
+            ->and($e->apiErrorMessage)->toBeNull()
+            ->and($e->rawBody)->toBe($body);
+    }
+});
+
+// The bug these replace: the SDK read `code`/`message`, which the API has
+// never sent — every error arrived as [null, null], and $e->apiErrorMessage
+// was null on every single failure in production. The old tests passed
+// because they fed the SDK the same invented envelope the SDK expected.
+it('reads the error text the API actually sends', function (): void {
+    [$client, $mock] = makeMockedClient();
+    $body = json_encode(['error' => 'X-API-Key header is required'], JSON_THROW_ON_ERROR);
+    $mock->addResponse(new Response(401, ['Content-Type' => 'application/json'], $body));
+
+    try {
+        $client->listCashiers();
+        Assert::fail('expected VcrApiException');
+    } catch (VcrApiException $e) {
+        expect($e->apiErrorMessage)->toBe('X-API-Key header is required')
+            ->and($e->getMessage())
+            ->toBe('VCR.AM API returned HTTP 401: X-API-Key header is required');
+    }
+});
+
+it('surfaces field-level validation issues', function (): void {
+    [$client, $mock] = makeMockedClient();
+    $body = json_encode([
+        'error' => 'Validation failed',
+        'issues' => [
+            ['path' => ['items', 0, 'price'], 'message' => 'Required', 'code' => 'invalid_type'],
+            ['path' => [], 'message' => 'Root problem', 'code' => 'custom'],
+        ],
+    ], JSON_THROW_ON_ERROR);
+    $mock->addResponse(new Response(400, ['Content-Type' => 'application/json'], $body));
+
+    try {
+        $client->listCashiers();
+        Assert::fail('expected VcrApiException');
+    } catch (VcrApiException $e) {
+        $first = $e->issues[0] ?? null;
+        $second = $e->issues[1] ?? null;
+
+        expect($e->issues)->toHaveCount(2)
+            ->and($first?->pointer())->toBe('items.0.price')
+            ->and($first?->message)->toBe('Required')
+            ->and($first?->code)->toBe('invalid_type')
+            // An empty path means the complaint is about the body as a whole.
+            ->and($second?->pointer())->toBe('');
+    }
+});
+
+it('drops malformed issue entries without losing the well-formed ones', function (): void {
+    [$client, $mock] = makeMockedClient();
+    $body = json_encode([
+        'error' => 'Validation failed',
+        'issues' => [
+            'not an object',
+            ['message' => 'no code here'],
+            ['path' => ['a'], 'message' => 'ok', 'code' => 'custom'],
+        ],
+    ], JSON_THROW_ON_ERROR);
+    $mock->addResponse(new Response(400, ['Content-Type' => 'application/json'], $body));
+
+    try {
+        $client->listCashiers();
+        Assert::fail('expected VcrApiException');
+    } catch (VcrApiException $e) {
+        $only = $e->issues[0] ?? null;
+
+        expect($e->issues)->toHaveCount(1)
+            ->and($only?->message)->toBe('ok');
+    }
+});
+
+it('surfaces the requestId so support can find the matching log entry', function (): void {
+    [$client, $mock] = makeMockedClient();
+    $body = json_encode([
+        'error' => 'Internal server error',
+        'requestId' => '3f0c1c8e-1f2a-4c9e-9b1d-2b7a4c8e5f10',
+    ], JSON_THROW_ON_ERROR);
+    $mock->addResponse(new Response(500, ['Content-Type' => 'application/json'], $body));
+
+    try {
+        $client->listCashiers();
+        Assert::fail('expected VcrApiException');
+    } catch (VcrApiException $e) {
+        expect($e->requestId)->toBe('3f0c1c8e-1f2a-4c9e-9b1d-2b7a4c8e5f10');
+    }
+});
+
+// The costliest field in the envelope: without it a 502 reads as "nothing
+// happened", the integrator retries, and the retry fiscalizes a second
+// receipt — a real tax document that can only be refunded, never deleted.
+it('surfaces the pending handle from a 502 so the caller does not resend', function (): void {
+    [$client, $mock] = makeMockedClient();
+    $body = json_encode([
+        'error' => 'Tax service (SRC) is temporarily unavailable.',
+        'pending' => ['type' => 'sale', 'id' => 5122, 'statusUrl' => '/api/v1/sales/5122'],
+    ], JSON_THROW_ON_ERROR);
+    $mock->addResponse(new Response(502, ['Content-Type' => 'application/json'], $body));
+
+    try {
+        $client->listCashiers();
+        Assert::fail('expected VcrApiException');
+    } catch (VcrApiException $e) {
+        expect($e->pending?->type)->toBe('sale')
+            ->and($e->pending?->id)->toBe(5122)
+            ->and($e->pending?->statusUrl)->toBe('/api/v1/sales/5122');
+    }
+});
+
+it('accepts a pending type it does not know, rather than dropping the handle', function (): void {
+    [$client, $mock] = makeMockedClient();
+    $body = json_encode([
+        'error' => 'Tax service (SRC) is temporarily unavailable.',
+        'pending' => ['type' => 'invoice', 'id' => 9, 'statusUrl' => '/api/v1/invoices/9'],
+    ], JSON_THROW_ON_ERROR);
+    $mock->addResponse(new Response(502, ['Content-Type' => 'application/json'], $body));
+
+    try {
+        $client->listCashiers();
+        Assert::fail('expected VcrApiException');
+    } catch (VcrApiException $e) {
+        expect($e->pending?->type)->toBe('invoice');
+    }
+});
+
+// Half a handle points at a document that may not be the one we persisted,
+// and the entire point of the field is telling the caller not to resend.
+it('rejects a partial pending handle outright', function (): void {
+    [$client, $mock] = makeMockedClient();
+    $body = json_encode([
+        'error' => 'Tax service (SRC) is temporarily unavailable.',
+        'pending' => ['type' => 'sale', 'statusUrl' => '/api/v1/sales/5122'],
+    ], JSON_THROW_ON_ERROR);
+    $mock->addResponse(new Response(502, ['Content-Type' => 'application/json'], $body));
+
+    try {
+        $client->listCashiers();
+        Assert::fail('expected VcrApiException');
+    } catch (VcrApiException $e) {
+        expect($e->pending)->toBeNull()
+            ->and($e->apiErrorMessage)->toBe('Tax service (SRC) is temporarily unavailable.');
     }
 });
 

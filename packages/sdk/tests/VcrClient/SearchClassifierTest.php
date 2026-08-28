@@ -85,8 +85,7 @@ it('rejects Language::Multi', function (): void {
 it('throws VcrApiException on HTTP 400 with parsed error envelope', function (): void {
     [$client, $mock] = makeMockedClient();
     $errorBody = json_encode([
-        'code' => 'INVALID_TYPE',
-        'message' => 'type must be product or service.',
+        'error' => 'type must be product or service.',
     ], JSON_THROW_ON_ERROR);
     $mock->addResponse(new Response(400, ['Content-Type' => 'application/json'], $errorBody));
 
@@ -95,6 +94,6 @@ it('throws VcrApiException on HTTP 400 with parsed error envelope', function ():
         Assert::fail('expected VcrApiException');
     } catch (VcrApiException $e) {
         expect($e->statusCode)->toBe(400)
-            ->and($e->apiErrorCode)->toBe('INVALID_TYPE');
+            ->and($e->apiErrorMessage)->toBe('type must be product or service.');
     }
 });

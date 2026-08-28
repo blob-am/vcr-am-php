@@ -152,8 +152,7 @@ it('sends a foreign-currency auto-settle sale on the wire (per-item currency, no
 it('surfaces server-side validation errors as VcrApiException', function (): void {
     [$client, $mock] = makeMockedClient();
     $errorBody = json_encode([
-        'code' => 'INVALID_TIN',
-        'message' => 'TIN must be 8 or 10 digits.',
+        'error' => 'TIN must be 8 or 10 digits.',
     ], JSON_THROW_ON_ERROR);
     $mock->addResponse(new Response(422, ['Content-Type' => 'application/json'], $errorBody));
 
@@ -162,7 +161,6 @@ it('surfaces server-side validation errors as VcrApiException', function (): voi
         Assert::fail('expected VcrApiException');
     } catch (VcrApiException $e) {
         expect($e->statusCode)->toBe(422)
-            ->and($e->apiErrorCode)->toBe('INVALID_TIN')
             ->and($e->apiErrorMessage)->toBe('TIN must be 8 or 10 digits.');
     }
 });

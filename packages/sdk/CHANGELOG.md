@@ -2,6 +2,40 @@
 
 All notable changes to this package will be documented in this file.
 
+## [0.7.0] — 2026-08-28
+
+### Fixed — error envelope was never parsed (breaking)
+
+- **`VcrApiException::$apiErrorMessage` was `null` on every failure, in every version.** The SDK read `code` and `message` from the error body; the API has always sent `{ error, ... }`. Nothing matched, so every rejection arrived with no detail at all and callers were left reading `rawBody` by hand.
+
+  The tests did not catch it because they fed the SDK the same invented envelope the SDK expected — `['code' => 'INVALID_TIN', 'message' => '…']` is a body the server has never produced. They have been rewritten against the real wire shape.
+
+- **Removed `VcrApiException::$apiErrorCode`.** There is no top-level `code` in the API's envelope, so the property could only ever be `null`. Any `if ($e->apiErrorCode === 'INVALID_TIN')` in your code was dead: branch on `$e->statusCode`, on `$e->issues`, or on `$e->apiErrorMessage` instead.
+
+- **`VcrApiException`'s constructor signature changed** — `apiErrorCode` is gone and the new envelope fields follow `$response` as optional named arguments. Only affects code that constructs the exception directly (test doubles, mostly).
+
+### Added
+
+- **`VcrApiException::$pending`** (`?PendingResource`) — a `502` raised because the tax service was unreachable now tells you the document **was** persisted and queued for automatic resubmission. Do not resend: that fiscalizes a second receipt, and a fiscal receipt can only be refunded, never deleted.
+
+  ```php
+  } catch (VcrApiException $e) {
+      if ($e->pending !== null) {
+          $queue->recordPending($e->pending->type, $e->pending->id);
+
+          return; // nothing was lost
+      }
+
+      throw $e;
+  }
+  ```
+
+  `PendingResource::$type` is a plain string rather than an enum on purpose: if the server starts queueing a type an older SDK does not know, an enum would fail to parse and take the real error message down with it.
+
+- **`VcrApiException::$issues`** (`list<ApiErrorIssue>`) — field-level complaints from a request that failed schema validation. `ApiErrorIssue::pointer()` renders the path as `items.0.price` for mapping straight onto form fields. Malformed entries are skipped rather than failing the whole envelope.
+
+- **`VcrApiException::$requestId`** — correlation id on unexpected 5xx responses. Quote it to support to locate the matching log entry.
+
 ## [0.6.0] — 2026-07-10
 
 ### Added

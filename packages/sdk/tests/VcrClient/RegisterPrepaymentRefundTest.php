@@ -93,8 +93,7 @@ it('sends a POST request to /prepayments/refund with the JSON-encoded input', fu
 it('surfaces server-side rejection as VcrApiException', function (): void {
     [$client, $mock] = makeMockedClient();
     $errorBody = json_encode([
-        'code' => 'PREPAYMENT_ALREADY_REFUNDED',
-        'message' => 'Prepayment 9001 has already been refunded.',
+        'error' => 'Prepayment 9001 has already been refunded.',
     ], JSON_THROW_ON_ERROR);
     $mock->addResponse(new Response(409, ['Content-Type' => 'application/json'], $errorBody));
 
@@ -103,6 +102,6 @@ it('surfaces server-side rejection as VcrApiException', function (): void {
         Assert::fail('expected VcrApiException');
     } catch (VcrApiException $e) {
         expect($e->statusCode)->toBe(409)
-            ->and($e->apiErrorCode)->toBe('PREPAYMENT_ALREADY_REFUNDED');
+            ->and($e->apiErrorMessage)->toBe('Prepayment 9001 has already been refunded.');
     }
 });

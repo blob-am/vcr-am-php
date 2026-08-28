@@ -61,8 +61,7 @@ it('sends a POST request to /cashiers with the JSON-encoded input', function ():
 it('surfaces server-side rejection as VcrApiException', function (): void {
     [$client, $mock] = makeMockedClient();
     $errorBody = json_encode([
-        'code' => 'DESK_TAKEN',
-        'message' => 'A cashier with that name already exists.',
+        'error' => 'A cashier with that name already exists.',
     ], JSON_THROW_ON_ERROR);
     $mock->addResponse(new Response(409, ['Content-Type' => 'application/json'], $errorBody));
 
@@ -71,6 +70,6 @@ it('surfaces server-side rejection as VcrApiException', function (): void {
         Assert::fail('expected VcrApiException');
     } catch (VcrApiException $e) {
         expect($e->statusCode)->toBe(409)
-            ->and($e->apiErrorCode)->toBe('DESK_TAKEN');
+            ->and($e->apiErrorMessage)->toBe('A cashier with that name already exists.');
     }
 });

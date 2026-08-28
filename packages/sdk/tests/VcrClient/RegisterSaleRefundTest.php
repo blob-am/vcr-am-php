@@ -99,8 +99,7 @@ it('sends a POST request to /sales/refund with the JSON-encoded input', function
 it('surfaces server-side rejection as VcrApiException', function (): void {
     [$client, $mock] = makeMockedClient();
     $errorBody = json_encode([
-        'code' => 'SALE_NOT_FOUND',
-        'message' => 'Sale 4711 was not registered through this account.',
+        'error' => 'Sale 4711 was not registered through this account.',
     ], JSON_THROW_ON_ERROR);
     $mock->addResponse(new Response(404, ['Content-Type' => 'application/json'], $errorBody));
 
@@ -109,6 +108,6 @@ it('surfaces server-side rejection as VcrApiException', function (): void {
         Assert::fail('expected VcrApiException');
     } catch (VcrApiException $e) {
         expect($e->statusCode)->toBe(404)
-            ->and($e->apiErrorCode)->toBe('SALE_NOT_FOUND');
+            ->and($e->apiErrorMessage)->toBe('Sale 4711 was not registered through this account.');
     }
 });

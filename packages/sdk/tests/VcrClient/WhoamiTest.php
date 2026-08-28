@@ -74,7 +74,7 @@ it('parses a sandbox VCR with no CRN (pre-activation)', function (): void {
 it('throws VcrApiException on HTTP 401', function (): void {
     [$client, $mock] = makeMockedClient();
     $mock->addResponse(new Response(401, ['Content-Type' => 'application/json'], json_encode([
-        'code' => 'INVALID_TOKEN', 'message' => 'API key revoked',
+        'error' => 'API key revoked',
     ], JSON_THROW_ON_ERROR)));
 
     try {
@@ -82,7 +82,7 @@ it('throws VcrApiException on HTTP 401', function (): void {
         Assert::fail('expected VcrApiException');
     } catch (VcrApiException $e) {
         expect($e->statusCode)->toBe(401)
-            ->and($e->apiErrorCode)->toBe('INVALID_TOKEN');
+            ->and($e->apiErrorMessage)->toBe('API key revoked');
     }
 });
 

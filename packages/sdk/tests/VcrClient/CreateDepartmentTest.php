@@ -67,8 +67,7 @@ it('sends a POST request to /departments with the JSON-encoded input', function 
 it('surfaces server-side rejection as VcrApiException', function () use ($title): void {
     [$client, $mock] = makeMockedClient();
     $errorBody = json_encode([
-        'code' => 'TAX_REGIME_INVALID',
-        'message' => 'Account is not registered for VAT.',
+        'error' => 'Account is not registered for VAT.',
     ], JSON_THROW_ON_ERROR);
     $mock->addResponse(new Response(422, ['Content-Type' => 'application/json'], $errorBody));
 
@@ -80,6 +79,6 @@ it('surfaces server-side rejection as VcrApiException', function () use ($title)
         Assert::fail('expected VcrApiException');
     } catch (VcrApiException $e) {
         expect($e->statusCode)->toBe(422)
-            ->and($e->apiErrorCode)->toBe('TAX_REGIME_INVALID');
+            ->and($e->apiErrorMessage)->toBe('Account is not registered for VAT.');
     }
 });

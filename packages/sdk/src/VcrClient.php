@@ -16,6 +16,7 @@ use BlobSolutions\VcrAm\Input\RegisterPrepaymentRefundInput;
 use BlobSolutions\VcrAm\Input\RegisterSaleInput;
 use BlobSolutions\VcrAm\Input\RegisterSaleRefundInput;
 use BlobSolutions\VcrAm\Model\AccountInfo;
+use BlobSolutions\VcrAm\Model\ApiErrorIssue;
 use BlobSolutions\VcrAm\Model\CashierListItem;
 use BlobSolutions\VcrAm\Model\ClassifierSearchItem;
 use BlobSolutions\VcrAm\Model\CreateCashierResponse;
@@ -25,6 +26,7 @@ use BlobSolutions\VcrAm\Model\CustomerPrepaymentBalance;
 use BlobSolutions\VcrAm\Model\DepartmentListItem;
 use BlobSolutions\VcrAm\Model\ExchangeRate;
 use BlobSolutions\VcrAm\Model\OfferListItem;
+use BlobSolutions\VcrAm\Model\PendingResource;
 use BlobSolutions\VcrAm\Model\PrepaymentDetail;
 use BlobSolutions\VcrAm\Model\PrepaymentListItem;
 use BlobSolutions\VcrAm\Model\RegisterPrepaymentRefundResponse;
@@ -57,7 +59,7 @@ final class VcrClient
 {
     public const DEFAULT_BASE_URL = 'https://vcr.am/api/v1';
 
-    public const VERSION = '0.6.0';
+    public const VERSION = '0.7.0';
 
     /**
      * Cap on how many bytes of an error response body are included in the
@@ -678,24 +680,29 @@ final class VcrClient
         $statusCode = $response->getStatusCode();
 
         if ($statusCode >= 400) {
-            [$errorCode, $errorMessage] = $this->extractApiError($rawBody);
+            $apiError = $this->parseApiError($rawBody);
 
             $this->logger->warning('VCR.AM API error', [
                 'method' => $method,
                 'url' => (string) $request->getUri(),
                 'status' => $statusCode,
-                'errorCode' => $errorCode,
-                'errorMessage' => $errorMessage,
+                'errorMessage' => $apiError['message'],
+                'requestId' => $apiError['requestId'],
+                // Worth its own log line: it is the difference between "the
+                // call failed" and "the call failed but the receipt exists".
+                'pendingId' => $apiError['pending']?->id,
                 'rawBodyPreview' => mb_substr($rawBody, 0, self::ERROR_BODY_PREVIEW_BYTES),
             ]);
 
             throw new VcrApiException(
                 $statusCode,
-                $errorCode,
-                $errorMessage,
+                $apiError['message'],
                 $rawBody,
                 $this->redactRequest($request),
                 $response,
+                $apiError['issues'],
+                $apiError['requestId'],
+                $apiError['pending'],
             );
         }
 
@@ -782,30 +789,103 @@ final class VcrClient
     }
 
     /**
-     * Extracts an error code and message from the raw error body. Returns
-     * `[null, null]` when the body is not a JSON object or doesn't carry the
-     * expected envelope.
+     * Parses the API's error envelope, `{ error, issues?, requestId?, pending? }`.
      *
-     * @return array{0: ?string, 1: ?string}
+     * Every field is optional here even though the server always sends `error`,
+     * because this runs on bodies that may not have come from VCR at all — a
+     * proxy's HTML error page, a gateway timeout. Anything unrecognised yields
+     * nulls and the caller falls back to `rawBody`; parsing an error must never
+     * throw a second error over the first.
+     *
+     * @return array{
+     *     message: ?string,
+     *     issues: list<ApiErrorIssue>,
+     *     requestId: ?string,
+     *     pending: ?PendingResource,
+     * }
      */
-    private function extractApiError(string $rawBody): array
+    private function parseApiError(string $rawBody): array
     {
+        $empty = ['message' => null, 'issues' => [], 'requestId' => null, 'pending' => null];
+
         try {
             $decoded = json_decode($rawBody, associative: true, flags: JSON_THROW_ON_ERROR);
         } catch (JsonException) {
-            return [null, null];
+            return $empty;
         }
 
         if (! is_array($decoded)) {
-            return [null, null];
+            return $empty;
         }
 
-        $code = $decoded['code'] ?? null;
-        $message = $decoded['message'] ?? null;
+        $message = $decoded['error'] ?? null;
+        $requestId = $decoded['requestId'] ?? null;
 
         return [
-            is_string($code) ? $code : null,
-            is_string($message) ? $message : null,
+            'message' => is_string($message) ? $message : null,
+            'issues' => $this->parseIssues($decoded['issues'] ?? null),
+            'requestId' => is_string($requestId) ? $requestId : null,
+            'pending' => $this->parsePending($decoded['pending'] ?? null),
         ];
+    }
+
+    /**
+     * @return list<ApiErrorIssue>
+     */
+    private function parseIssues(mixed $raw): array
+    {
+        if (! is_array($raw)) {
+            return [];
+        }
+
+        $issues = [];
+
+        foreach ($raw as $entry) {
+            if (! is_array($entry)) {
+                continue;
+            }
+
+            $message = $entry['message'] ?? null;
+            $code = $entry['code'] ?? null;
+            $path = $entry['path'] ?? null;
+
+            if (! is_string($message) || ! is_string($code)) {
+                continue;
+            }
+
+            $segments = [];
+
+            if (is_array($path)) {
+                foreach ($path as $segment) {
+                    if (is_string($segment) || is_int($segment)) {
+                        $segments[] = $segment;
+                    }
+                }
+            }
+
+            $issues[] = new ApiErrorIssue($segments, $message, $code);
+        }
+
+        return $issues;
+    }
+
+    private function parsePending(mixed $raw): ?PendingResource
+    {
+        if (! is_array($raw)) {
+            return null;
+        }
+
+        $type = $raw['type'] ?? null;
+        $id = $raw['id'] ?? null;
+        $statusUrl = $raw['statusUrl'] ?? null;
+
+        // All three or nothing: a half-parsed handle would point the caller at
+        // a document that may not be the one that was persisted, and the whole
+        // purpose of this field is telling them not to resend.
+        if (! is_string($type) || ! is_int($id) || ! is_string($statusUrl)) {
+            return null;
+        }
+
+        return new PendingResource($type, $id, $statusUrl);
     }
 }

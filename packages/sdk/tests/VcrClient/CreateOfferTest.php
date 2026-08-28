@@ -69,8 +69,7 @@ it('sends a POST request to /offers with the JSON-encoded input', function (): v
 it('surfaces server-side rejection as VcrApiException', function (): void {
     [$client, $mock] = makeMockedClient();
     $errorBody = json_encode([
-        'code' => 'CLASSIFIER_CODE_UNKNOWN',
-        'message' => 'classifierCode 01.01.01 is not in the SRC taxonomy.',
+        'error' => 'classifierCode 01.01.01 is not in the SRC taxonomy.',
     ], JSON_THROW_ON_ERROR);
     $mock->addResponse(new Response(422, ['Content-Type' => 'application/json'], $errorBody));
 
@@ -79,6 +78,6 @@ it('surfaces server-side rejection as VcrApiException', function (): void {
         Assert::fail('expected VcrApiException');
     } catch (VcrApiException $e) {
         expect($e->statusCode)->toBe(422)
-            ->and($e->apiErrorCode)->toBe('CLASSIFIER_CODE_UNKNOWN');
+            ->and($e->apiErrorMessage)->toBe('classifierCode 01.01.01 is not in the SRC taxonomy.');
     }
 });

@@ -415,15 +415,29 @@ use BlobSolutions\VcrAm\Exception\VcrValidationException;
 try {
     $response = $client->registerSale($input);
 } catch (VcrApiException $e) {
-    // Server returned a non-2xx HTTP response.
+    // Server returned a non-2xx HTTP response. The API's error envelope is
+    // `{ error, issues?, requestId?, pending? }` and all of it is surfaced:
     // $e->statusCode       — HTTP status (int)
-    // $e->apiErrorCode     — SRC error code (string|null), e.g. 'INVALID_TIN'
-    // $e->apiErrorMessage  — human-readable detail (string|null)
+    // $e->apiErrorMessage  — the envelope's `error` (string|null)
+    // $e->issues           — list<ApiErrorIssue>, present on validation failures
+    // $e->requestId        — correlation id on unexpected 5xx (string|null)
+    // $e->pending          — PendingResource|null, see below
     // $e->rawBody          — full response body, in case envelope parsing failed
     // $e->request          — PSR-7 request (X-API-Key header redacted)
     // $e->response         — PSR-7 response
-    if ($e->statusCode === 422 && $e->apiErrorCode === 'INVALID_TIN') {
-        // Surface a friendly message to the cashier UI
+
+    // A 502 does NOT always mean nothing happened. When the tax service was
+    // merely unreachable, VCR saved the document and queued it for automatic
+    // resubmission — resending would fiscalize a SECOND receipt, and a fiscal
+    // receipt cannot be deleted, only refunded.
+    if ($e->pending !== null) {
+        $queue->recordPending($e->pending->type, $e->pending->id);
+
+        return; // nothing was lost; read it back later instead of resending
+    }
+
+    foreach ($e->issues as $issue) {
+        $errors[$issue->pointer()] = $issue->message; // e.g. 'items.0.price'
     }
 
     throw $e;
