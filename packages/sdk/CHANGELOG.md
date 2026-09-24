@@ -2,6 +2,27 @@
 
 All notable changes to this package will be documented in this file.
 
+## [0.9.0] — 2026-09-24
+
+### Added — `PendingResource::$mayResubmit` says whether to send the request again
+
+- VCR's own retry of a document the tax authority never received is now opt-in and off by default, so a `502` no longer implies "we will finish this for you". An integration that assumes it does leaves the sale unfiscalized; one that resends while VCR is still settling the document gets a second fiscal receipt.
+
+  `true` means SRC registered nothing and nothing will send it from VCR's side — resubmitting is how the document gets fiscalized. `false` means the document is still VCR's to settle, so read `$statusUrl` instead of re-posting. Always `false` on a `409`: the same payload earns the same rejection.
+
+  ```php
+  try {
+      $client->registerSale($sale);
+  } catch (VcrApiException $e) {
+      if ($e->body->pending?->mayResubmit === true) {
+          $this->retryLater($sale); // SRC has nothing; it is yours to send
+      }
+      // otherwise poll $e->body->pending?->statusUrl — do not resend
+  }
+  ```
+
+  Nullable, because a VCR older than this field does not send it. `null` means the same as `false`, which is what those servers did — the parser keeps the handle rather than rejecting it over a missing field.
+
 ## [0.8.0] — 2026-08-28
 
 ### Changed — `SaleItem::$department` is now optional (breaking)

@@ -886,6 +886,17 @@ final class VcrClient
             return null;
         }
 
-        return new PendingResource($type, $id, $statusUrl);
+        // Not part of that rule: a server older than this field sends no
+        // `mayResubmit`, and refusing the handle over it would throw away the
+        // id and the poll URL those servers do send. Stays null, which the
+        // model documents as "assume false".
+        $mayResubmit = $raw['mayResubmit'] ?? null;
+
+        return new PendingResource(
+            $type,
+            $id,
+            $statusUrl,
+            is_bool($mayResubmit) ? $mayResubmit : null,
+        );
     }
 }

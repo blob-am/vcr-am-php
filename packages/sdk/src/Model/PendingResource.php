@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace BlobSolutions\VcrAm\Model;
 
 /**
- * A document VCR persisted and queued for automatic resubmission to SRC.
+ * A document VCR persisted despite the error.
  *
- * Present on a 502 when SRC was merely unreachable. It means the request was
- * NOT lost: VCR owns the work and a background sweep usually completes it
- * within minutes. Read the document back at {@see $statusUrl} to learn the
- * outcome — and do NOT resend the original request, which would produce a
- * second fiscal receipt. A fiscal receipt cannot be deleted, only refunded.
+ * Present on a 502 when SRC was unreachable, and on a 409 when SRC refused the
+ * document. Either way the request was NOT lost, so never resend blindly —
+ * {@see $mayResubmit} says whether sending it again is the right move or the
+ * way to a second fiscal receipt. A fiscal receipt cannot be deleted, only
+ * refunded.
  *
  * Its absence on an error means nothing was created and the call can be
  * repeated normally.
@@ -28,6 +28,22 @@ final readonly class PendingResource
         public int $id,
         /** Path to read the outcome from, e.g. `/api/v1/sales/5122`. */
         public string $statusUrl,
+        /**
+         * Whether sending this exact request again is safe.
+         *
+         * `false` — the document is still VCR's to settle: SRC may have
+         * registered it already, or VCR will submit it again for you.
+         * Resending risks a second fiscal receipt. Read {@see $statusUrl}
+         * instead.
+         *
+         * `true` — SRC registered nothing and VCR will not send it again (the
+         * merchant has late fiscalization off, which is the default).
+         * Resubmitting is how the document gets fiscalized.
+         *
+         * `null` when the server predates the field. Treat that as `false` —
+         * the conservative reading, and what those servers did.
+         */
+        public ?bool $mayResubmit = null,
     ) {
     }
 }
