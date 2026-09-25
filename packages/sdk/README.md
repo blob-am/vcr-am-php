@@ -552,9 +552,25 @@ Decimal fields on **response** types (`SaleDetail::$cashAmount`, `Receipt::$tota
 
 ## Idempotency and retries
 
-The SDK does **not** retry failed requests automatically. Fiscalization endpoints are not guaranteed to be idempotent on the server side; a silent retry could double-register a sale.
+A fiscal receipt cannot be corrected, only refunded and reissued, so a retry that files a second one is the most expensive mistake this SDK can help you make. Pass an idempotency key and a repeat of the same call returns the original receipt instead:
 
-If you need retries, attach a Guzzle (or other PSR-18) middleware that retries only on `VcrNetworkException`-class failures (DNS/TLS/timeout) and never on a `VcrApiException` — the latter means the server has already seen and rejected your request.
+```php
+$sale = $client->registerSale($input, $order->fiscalizationKey);
+```
+
+The key is the second argument on `registerSale()`, `registerSaleRefund()`, `registerPrepayment()` and `registerPrepaymentRefund()`. It travels as the `Idempotency-Key` header, stays replayable for 30 days, and is scoped per endpoint and per register — so the same value on `/sales` and on `/sales/refund` is two independent keys.
+
+**Generate it once per intended fiscal operation and persist it with the order before the first call**, then reuse it verbatim for every retry. A fresh value per attempt protects nothing, and the order number on its own is too coarse when one order can produce several fiscal documents. For a stateless webhook handler that may be delivered twice, derive it instead:
+
+```php
+$key = Uuid::uuid5(Uuid::fromString(self::NAMESPACE), "{$order->id}:sale")->toString();
+```
+
+Both deliveries then compute the same key and the second one replays. Do not derive it from the payment provider's event id — a different event about the same order would produce a different key and fiscalize again.
+
+Server responses to a replayed request are byte-identical to the original and carry `Idempotent-Replay: true`. Reusing a key with a different body answers `422`; reusing one while the first request is still in flight answers `409`, which means wait and retry with the same key rather than minting a new one.
+
+Without a key, a retried request files a second fiscal document. The SDK does **not** retry automatically for that reason. If you add retries, attach a Guzzle (or other PSR-18) middleware that retries only on `VcrNetworkException`-class failures (DNS/TLS/timeout) and never on a `VcrApiException` — the latter means the server has already seen and rejected your request — and always send the key.
 
 ## Compatibility
 

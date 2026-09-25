@@ -59,6 +59,9 @@ final class VcrClient
 {
     public const DEFAULT_BASE_URL = 'https://vcr.am/api/v1';
 
+    /** Server-side cap on the `Idempotency-Key` header. */
+    public const MAX_IDEMPOTENCY_KEY_LENGTH = 128;
+
     public const VERSION = '0.7.0';
 
     /**
@@ -162,14 +165,18 @@ final class VcrClient
      * @throws VcrNetworkException    On network/transport failures
      * @throws VcrValidationException On schema mismatches in the response body
      */
-    public function registerSale(RegisterSaleInput $input): RegisterSaleResponse
+    public function registerSale(RegisterSaleInput $input, ?string $idempotencyKey = null): RegisterSaleResponse
     {
+        self::assertIdempotencyKey($idempotencyKey);
+
         /** @var RegisterSaleResponse $result */
         $result = $this->request(
             'POST',
             '/sales',
             RegisterSaleResponse::class,
             $input->jsonSerialize(),
+            null,
+            $idempotencyKey,
         );
 
         return $result;
@@ -184,14 +191,18 @@ final class VcrClient
      * @throws VcrNetworkException
      * @throws VcrValidationException
      */
-    public function registerSaleRefund(RegisterSaleRefundInput $input): RegisterSaleRefundResponse
+    public function registerSaleRefund(RegisterSaleRefundInput $input, ?string $idempotencyKey = null): RegisterSaleRefundResponse
     {
+        self::assertIdempotencyKey($idempotencyKey);
+
         /** @var RegisterSaleRefundResponse $result */
         $result = $this->request(
             'POST',
             '/sales/refund',
             RegisterSaleRefundResponse::class,
             $input->jsonSerialize(),
+            null,
+            $idempotencyKey,
         );
 
         return $result;
@@ -205,14 +216,18 @@ final class VcrClient
      * @throws VcrNetworkException
      * @throws VcrValidationException
      */
-    public function registerPrepayment(RegisterPrepaymentInput $input): RegisterPrepaymentResponse
+    public function registerPrepayment(RegisterPrepaymentInput $input, ?string $idempotencyKey = null): RegisterPrepaymentResponse
     {
+        self::assertIdempotencyKey($idempotencyKey);
+
         /** @var RegisterPrepaymentResponse $result */
         $result = $this->request(
             'POST',
             '/prepayments',
             RegisterPrepaymentResponse::class,
             $input->jsonSerialize(),
+            null,
+            $idempotencyKey,
         );
 
         return $result;
@@ -325,14 +340,18 @@ final class VcrClient
      * @throws VcrNetworkException
      * @throws VcrValidationException
      */
-    public function registerPrepaymentRefund(RegisterPrepaymentRefundInput $input): RegisterPrepaymentRefundResponse
+    public function registerPrepaymentRefund(RegisterPrepaymentRefundInput $input, ?string $idempotencyKey = null): RegisterPrepaymentRefundResponse
     {
+        self::assertIdempotencyKey($idempotencyKey);
+
         /** @var RegisterPrepaymentRefundResponse $result */
         $result = $this->request(
             'POST',
             '/prepayments/refund',
             RegisterPrepaymentRefundResponse::class,
             $input->jsonSerialize(),
+            null,
+            $idempotencyKey,
         );
 
         return $result;
@@ -656,8 +675,9 @@ final class VcrClient
         string $signature,
         ?array $jsonBody = null,
         ?array $query = null,
+        ?string $idempotencyKey = null,
     ): mixed {
-        $request = $this->buildRequest($method, $path, $jsonBody, $query);
+        $request = $this->buildRequest($method, $path, $jsonBody, $query, $idempotencyKey);
 
         $this->logger->debug('VCR.AM request', [
             'method' => $method,
@@ -752,13 +772,42 @@ final class VcrClient
     }
 
     /**
+     * Rejects a key the server would reject anyway, but at the call site,
+     * where the stack trace still names the order it belongs to.
+     *
+     * A key must stay identical across every retry of the same intended
+     * fiscal operation — that is the whole mechanism. Generate it once,
+     * persist it next to the order, and reuse it; a value minted per attempt
+     * protects nothing.
+     */
+    private static function assertIdempotencyKey(?string $key): void
+    {
+        if ($key === null) {
+            return;
+        }
+
+        if ($key === '' || mb_strlen($key) > self::MAX_IDEMPOTENCY_KEY_LENGTH) {
+            throw new InvalidArgumentException(sprintf(
+                'Idempotency key must be 1-%d characters, got %d.',
+                self::MAX_IDEMPOTENCY_KEY_LENGTH,
+                mb_strlen($key),
+            ));
+        }
+    }
+
+    /**
      * @param non-empty-string                       $method
      * @param non-empty-string                       $path
      * @param array<string, mixed>|list<mixed>|null  $jsonBody
      * @param ?array<string, string>                 $query
      */
-    private function buildRequest(string $method, string $path, ?array $jsonBody, ?array $query = null): RequestInterface
-    {
+    private function buildRequest(
+        string $method,
+        string $path,
+        ?array $jsonBody,
+        ?array $query = null,
+        ?string $idempotencyKey = null,
+    ): RequestInterface {
         $url = $this->baseUrl . $path;
 
         if ($query !== null && $query !== []) {
@@ -772,6 +821,10 @@ final class VcrClient
             ->withHeader('X-API-Key', $this->apiKey)
             ->withHeader('Accept', 'application/json')
             ->withHeader('User-Agent', sprintf('vcr-am-sdk-php/%s (+https://github.com/blob-am/vcr-am-sdk-php)', self::VERSION));
+
+        if ($idempotencyKey !== null) {
+            $request = $request->withHeader('Idempotency-Key', $idempotencyKey);
+        }
 
         if ($jsonBody !== null) {
             // JSON_THROW_ON_ERROR surfaces unencodable input (NaN, INF,
