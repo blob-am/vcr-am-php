@@ -2,6 +2,23 @@
 
 All notable changes to `blob-solutions/laravel-vcr-am` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] — 2026-09-26
+
+### Removed
+
+- **Laravel 11 is no longer supported (breaking).** `illuminate/*` constraints
+  are now `^12.0 || ^13.0`. This is not a housekeeping drop: `laravel/framework`
+  11.x carries three live advisories, one high (CVE-2026-48019), and the fixed
+  releases are 12.60.0, 12.61.1 and 13.12.0 — there is no patched 11.x to
+  install. Declaring support for a version that can only resolve vulnerable is a
+  claim we cannot keep. A Laravel 11 application should upgrade the framework;
+  it is exposed by that, not by this package.
+
+### Changed
+
+- The published archive no longer carries `tests/` or the lint and analysis
+  configuration. `config/` stays, since Laravel publishes it.
+
 ## [0.8.0] — 2026-08-28
 
 ### Changed

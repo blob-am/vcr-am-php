@@ -2,7 +2,7 @@
 
 All notable changes to this package will be documented in this file.
 
-## [0.9.0] — 2026-09-24
+## [0.9.0] — 2026-09-26
 
 ### Added — `PendingResource::$mayResubmit` says whether to send the request again
 
@@ -22,6 +22,14 @@ All notable changes to this package will be documented in this file.
   ```
 
   Nullable, because a VCR older than this field does not send it. `null` means the same as `false`, which is what those servers did — the parser keeps the handle rather than rejecting it over a missing field.
+
+### Changed — the minimum Guzzle is now 7.15.2
+
+- The floor was `^7.10`, and 7.10.0 through 7.15.1 carry published advisories, one of them high: CVE-2026-69246, where a noncanonical host bypasses host-based checks. Composer 2.9 already refuses to resolve a version with a live advisory (`audit.block-insecure`, on by default), so in practice a fresh install never picked one — this writes the minimum down for anyone who has turned that off or runs an older Composer.
+
+### Changed — the published archive carries only what you run
+
+- `tests/`, `phpunit.xml.dist`, `phpstan.neon.dist` and `pint.json` are excluded from the dist archive, which halves it: 419,840 bytes to 225,280. Nothing in `src/` moved. If you vendor this package into something you distribute — the WooCommerce plugin scopes it into the ZIP merchants install — that scaffolding no longer travels with it.
 
 ## [0.8.0] — 2026-08-28
 
