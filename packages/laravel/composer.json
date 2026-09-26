@@ -1,6 +1,6 @@
 {
     "name": "blob-solutions/laravel-vcr-am",
-    "description": "Official Laravel adapter for the VCR.AM Virtual Cash Register PHP SDK — ServiceProvider, Facade, config publishing, and Artisan commands.",
+    "description": "Official Laravel adapter for the VCR.AM Virtual Cash Register PHP SDK \u2014 ServiceProvider, Facade, config publishing, and Artisan commands.",
     "type": "library",
     "license": "ISC",
     "keywords": [
@@ -37,16 +37,16 @@
         "php": "^8.2",
         "ext-json": "*",
         "blob-solutions/vcr-am-sdk": "^0.1 || dev-main",
-        "illuminate/console": "^11.0 || ^12.0 || ^13.0",
-        "illuminate/contracts": "^11.0 || ^12.0 || ^13.0",
-        "illuminate/support": "^11.0 || ^12.0 || ^13.0",
+        "illuminate/console": "^12.0 || ^13.0",
+        "illuminate/contracts": "^12.0 || ^13.0",
+        "illuminate/support": "^12.0 || ^13.0",
         "spatie/laravel-package-tools": "^1.16"
     },
     "require-dev": {
         "larastan/larastan": "^3.0",
         "laravel/pint": "^1.29",
         "nyholm/psr7": "^1.8",
-        "orchestra/testbench": "^9.0 || ^10.0",
+        "orchestra/testbench": "^10.0",
         "pestphp/pest": "^3.7",
         "pestphp/pest-plugin-laravel": "^3.0",
         "pestphp/pest-plugin-type-coverage": "^3.5",

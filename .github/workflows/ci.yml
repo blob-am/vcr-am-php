@@ -84,15 +84,19 @@ jobs:
       fail-fast: false
       matrix:
         # Testbench version pins the Laravel major:
-        #   ^9.x  => Laravel 11 (PHP 8.2+)
         #   ^10.x => Laravel 12 (PHP 8.2+)
-        # Laravel 13 is supported in `require` constraints but not exercised
-        # here yet — pest-plugin-laravel 3.x does not yet cover Laravel 13,
-        # and Pest 4 + PHPUnit 12 currently has discovery friction we have
-        # not unblocked. Re-add testbench `^11.0` once the Pest 4 toolchain
-        # stabilises.
+        # Laravel 11 (testbench ^9.x) is gone, and not by choice: laravel/
+        # framework 11.x carries three live advisories, one high
+        # (CVE-2026-48019), whose fixes exist only from 12.60.0 and 13.12.0 —
+        # there is no patched 11.x to install. Supporting it would mean
+        # shipping a matrix leg that can only resolve vulnerable, so the
+        # `require` constraints dropped ^11.0 with it.
+        # Laravel 13 is in `require` but not exercised here yet —
+        # pest-plugin-laravel 3.x does not cover Laravel 13, and Pest 4 +
+        # PHPUnit 12 has discovery friction we have not unblocked. Add
+        # testbench `^11.0` once that toolchain stabilises.
         php: ['8.2', '8.3', '8.4', '8.5']
-        testbench: ['^9.0', '^10.0']
+        testbench: ['^10.0']
 
     steps:
       - uses: actions/checkout@v6
