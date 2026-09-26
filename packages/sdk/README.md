@@ -568,7 +568,7 @@ $key = Uuid::uuid5(Uuid::fromString(self::NAMESPACE), "{$order->id}:sale")->toSt
 
 Both deliveries then compute the same key and the second one replays. Do not derive it from the payment provider's event id — a different event about the same order would produce a different key and fiscalize again.
 
-Server responses to a replayed request are byte-identical to the original and carry `Idempotent-Replay: true`. Reusing a key with a different body answers `422`; reusing one while the first request is still in flight answers `409`, which means wait and retry with the same key rather than minting a new one.
+Server responses to a replayed request are byte-identical to the original and carry `Idempotent-Replay: true`. Reusing a key with a different body answers `422`; reusing one while the first request is still in flight answers `409`, which means wait and retry with the same key rather than minting a new one. A body the server rejected on validation spends no key — the request never reached the operation, so correct the field and retry with the same key.
 
 Without a key, a retried request files a second fiscal document. The SDK does **not** retry automatically for that reason. If you add retries, attach a Guzzle (or other PSR-18) middleware that retries only on `VcrNetworkException`-class failures (DNS/TLS/timeout) and never on a `VcrApiException` — the latter means the server has already seen and rejected your request — and always send the key.
 
