@@ -50,6 +50,13 @@ jobs:
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress --no-interaction
 
+      # No `--locked` here, unlike the WooCommerce plugin: a library does not
+      # commit composer.lock, so every run resolves afresh and installed.json
+      # is the complete picture. This is the only place a vulnerable resolve
+      # can be caught before a consumer inherits it.
+      - name: Security advisories (Composer audit)
+        run: composer audit
+
       - name: Code style (Pint)
         run: vendor/bin/pint --test
 
@@ -118,6 +125,9 @@ jobs:
 
       - name: Install dependencies
         run: composer update --prefer-dist --prefer-stable --no-progress --no-interaction
+
+      - name: Security advisories (Composer audit)
+        run: composer audit
 
       - name: Code style (Pint)
         run: vendor/bin/pint --test
