@@ -1,0 +1,7 @@
+# Keep the published archive to what a consumer actually runs — see the same
+# file in packages/sdk for the reasoning. config/ stays: Laravel publishes it.
+/tests/             export-ignore
+/phpstan.neon.dist  export-ignore
+/phpunit.xml.dist   export-ignore
+/pint.json          export-ignore
+/.gitattributes     export-ignore

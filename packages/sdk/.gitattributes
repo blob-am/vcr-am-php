@@ -1,0 +1,16 @@
+# Keep the published archive to what a consumer actually runs.
+#
+# `composer install --prefer-dist` fetches GitHub's zipball, which is produced
+# by `git archive` and honours export-ignore. Everything listed here is
+# development scaffolding — it belongs in the repository and nowhere in a
+# consumer's vendor/. The WooCommerce plugin is the case that made it matter:
+# Strauss scopes this package into the ZIP merchants install, and tests/ alone
+# was 236 KB of a 1.2 MB artefact.
+#
+# src/, composer.json and LICENSE are the package; README.md and CHANGELOG.md
+# stay because Packagist renders them.
+/tests/             export-ignore
+/phpstan.neon.dist  export-ignore
+/phpunit.xml.dist   export-ignore
+/pint.json          export-ignore
+/.gitattributes     export-ignore
