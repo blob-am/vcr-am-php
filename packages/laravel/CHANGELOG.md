@@ -2,7 +2,12 @@
 
 All notable changes to `blob-solutions/laravel-vcr-am` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.9.0] — 2026-09-26
+## [0.9.0] — 2026-09-27
+
+### Changed
+
+- The published archive no longer carries `tests/` or the lint and analysis
+  configuration. `config/` stays, since Laravel publishes it.
 
 ### Removed
 
@@ -14,10 +19,12 @@ All notable changes to `blob-solutions/laravel-vcr-am` are documented here. The 
   claim we cannot keep. A Laravel 11 application should upgrade the framework;
   it is exposed by that, not by this package.
 
-### Changed
+### Fixed
 
-- The published archive no longer carries `tests/` or the lint and analysis
-  configuration. `config/` stays, since Laravel publishes it.
+- **The facade's `@method` annotations now carry the idempotency key.**
+  `VcrAm::registerSale($input, $key)` has worked at runtime since the SDK gained
+  the parameter, but the facade still declared the four old signatures, so
+  static analysis called the key an argument too many.
 
 ## [0.8.0] — 2026-08-28
 

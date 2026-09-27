@@ -2,7 +2,23 @@
 
 All notable changes to this package will be documented in this file.
 
-## [0.9.0] — 2026-09-26
+## [0.9.0] — 2026-09-27
+
+### Added — an idempotency key on every fiscal call
+
+- **`registerSale`, `registerSaleRefund`, `registerPrepayment` and `registerPrepaymentRefund` take an optional key as their second argument.** The server has honoured `Idempotency-Key` on all four endpoints for a long time. This SDK could not send one, and its README stated the opposite of the truth — that fiscalization is not guaranteed idempotent server-side. A retry written on that belief files a second fiscal receipt, and the only way back from one of those is a refund.
+
+  ```php
+  $client->registerSale($sale, "order-{$order->id}");
+  ```
+
+  The key is validated at the call site rather than at the server, so the stack trace still names the order it belongs to, and it is measured in characters — a key built from non-ASCII text is not rejected for being two bytes per character.
+
+  A body the server rejects on validation spends no key: fix the payload and retry with the same one.
+
+### Added — `receiptUrl` on the four fiscal responses
+
+- Nullable, because the API grew the field after these models shipped. A convenience link must never be the reason a fiscal response fails to parse.
 
 ### Added — `PendingResource::$mayResubmit` says whether to send the request again
 
