@@ -9,9 +9,39 @@ permissions:
   contents: write
 
 jobs:
+  verify-version:
+    name: Tag matches VcrClient::VERSION
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      # The constant is what every request announces in its User-Agent, and it
+      # stayed at 0.7.0 through the 0.8.0 and 0.9.0 releases because nothing
+      # compared the two. Fail before anything is published, not after.
+      - name: Compare the tag with the constant
+        run: |
+          set -euo pipefail
+
+          TAG="${{ github.ref_name }}"
+          EXPECTED="${TAG#v}"
+          FOUND=$(sed -n "s/.*public const VERSION = '\([^']*\)'.*/\1/p" packages/sdk/src/VcrClient.php)
+
+          if [ -z "$FOUND" ]; then
+            echo "Could not read VcrClient::VERSION — has the constant been renamed?" >&2
+            exit 1
+          fi
+
+          if [ "$FOUND" != "$EXPECTED" ]; then
+            echo "Tag $TAG expects VERSION $EXPECTED, but VcrClient::VERSION is $FOUND." >&2
+            exit 1
+          fi
+
+          echo "VcrClient::VERSION = $FOUND matches $TAG."
+
   github-release:
     name: GitHub Release on monorepo
     runs-on: ubuntu-latest
+    needs: verify-version
     steps:
       - uses: actions/checkout@v6
         with:

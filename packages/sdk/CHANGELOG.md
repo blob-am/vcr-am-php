@@ -2,6 +2,26 @@
 
 All notable changes to this package will be documented in this file.
 
+## [0.10.0] — 2026-09-29
+
+### Added — `integration`, so a plugin can name itself in the `User-Agent`
+
+- **New last constructor argument.** Code that embeds this SDK — a WooCommerce plugin, a Laravel app — can now say what it is, and the server's request log finally names it:
+
+  ```php
+  new VcrClient(
+      apiKey: $key,
+      integration: 'my-plugin/1.2.3 (WordPress/7.1; PHP/8.3)',
+  );
+  // User-Agent: vcr-am-sdk-php/0.10.0 (+https://github.com/blob-am/vcr-am-sdk-php) my-plugin/1.2.3 (WordPress/7.1; PHP/8.3)
+  ```
+
+  Until now every caller was indistinguishable from every other, so a support question about one integration could not be answered from the log. The token is printable ASCII, 1-200 characters, and validated at construction: on WordPress a plugin's own version string is whatever the last filter on it returned, and a newline in a header value is header injection.
+
+### Fixed — the version this package reports
+
+- **`VcrClient::VERSION` said `0.7.0` on 0.8.0 and 0.9.0 too.** Nothing bumped it and nothing checked it, so three releases announced themselves as the same one and the `User-Agent` was worse than useless: it looked precise and was wrong. A test now pins the constant to the newest heading in this file, and the release workflow refuses a tag that disagrees with it.
+
 ## [0.9.0] — 2026-09-27
 
 ### Added — an idempotency key on every fiscal call

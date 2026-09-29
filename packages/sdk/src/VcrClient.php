@@ -62,7 +62,20 @@ final class VcrClient
     /** Server-side cap on the `Idempotency-Key` header. */
     public const MAX_IDEMPOTENCY_KEY_LENGTH = 128;
 
-    public const VERSION = '0.7.0';
+    /**
+     * This package's own version, sent as the first product token of every
+     * request's `User-Agent`. Pinned to the newest entry in CHANGELOG.md by a
+     * test, and to the tag by the release workflow: it went three releases
+     * announcing itself as 0.7.0 because nothing checked it, which made the
+     * server's request log unable to name the client it was talking to.
+     */
+    public const VERSION = '0.10.0';
+
+    /**
+     * Cap on the `$integration` product token. Long enough for a plugin name,
+     * its version and a short parenthesised comment naming the host platform.
+     */
+    public const MAX_INTEGRATION_LENGTH = 200;
 
     /**
      * Cap on how many bytes of an error response body are included in the
@@ -85,6 +98,14 @@ final class VcrClient
 
     private readonly TreeMapper $mapper;
 
+    /**
+     * An extra `User-Agent` product token naming the thing that embeds this
+     * SDK, e.g. `vcr-am-woocommerce/0.1.8 (WordPress/7.1; PHP/8.3)`. Null for
+     * code calling the SDK directly, which the SDK's own token already
+     * describes as well as it can be described.
+     */
+    private readonly ?string $integration;
+
     public function __construct(
         string $apiKey,
         string $baseUrl = self::DEFAULT_BASE_URL,
@@ -92,11 +113,13 @@ final class VcrClient
         ?RequestFactoryInterface $requestFactory = null,
         ?StreamFactoryInterface $streamFactory = null,
         ?LoggerInterface $logger = null,
+        ?string $integration = null,
     ) {
         if (trim($apiKey) === '') {
             throw new InvalidArgumentException('apiKey must not be empty.');
         }
 
+        $this->integration = $integration === null ? null : self::normalizeIntegration($integration);
         $this->apiKey = $apiKey;
         $this->baseUrl = rtrim($baseUrl, '/');
         $this->httpClient = $httpClient ?? Psr18ClientDiscovery::find();
@@ -796,6 +819,50 @@ final class VcrClient
     }
 
     /**
+     * Rejects anything that cannot legally sit in a header value, rather than
+     * handing it to the PSR-7 implementation and hoping that one validates.
+     * A product token is printable US-ASCII; a newline in there is header
+     * injection, and the value comes from a plugin's own metadata, which on
+     * WordPress is whatever a theme or another plugin last filtered it to.
+     */
+    private static function normalizeIntegration(string $integration): string
+    {
+        $trimmed = trim($integration);
+
+        if ($trimmed === '' || mb_strlen($trimmed) > self::MAX_INTEGRATION_LENGTH) {
+            throw new InvalidArgumentException(sprintf(
+                'integration must be 1-%d characters, got %d.',
+                self::MAX_INTEGRATION_LENGTH,
+                mb_strlen($trimmed),
+            ));
+        }
+
+        // \z, not $: PCRE's $ also matches before a trailing newline, which is
+        // the one character this check exists to refuse.
+        if (preg_match('/\A[\x20-\x7E]+\z/', $trimmed) !== 1) {
+            throw new InvalidArgumentException(
+                'integration must contain printable ASCII only, e.g. "my-plugin/1.2.3 (Platform/4.5)".',
+            );
+        }
+
+        return $trimmed;
+    }
+
+    /**
+     * The SDK's own product token first, then the embedding integration's, in
+     * the order RFC 9110 asks for: most significant software first.
+     */
+    private function userAgent(): string
+    {
+        $mine = sprintf(
+            'vcr-am-sdk-php/%s (+https://github.com/blob-am/vcr-am-sdk-php)',
+            self::VERSION,
+        );
+
+        return $this->integration === null ? $mine : $mine . ' ' . $this->integration;
+    }
+
+    /**
      * @param non-empty-string                       $method
      * @param non-empty-string                       $path
      * @param array<string, mixed>|list<mixed>|null  $jsonBody
@@ -820,7 +887,7 @@ final class VcrClient
         $request = $this->requestFactory->createRequest($method, $url)
             ->withHeader('X-API-Key', $this->apiKey)
             ->withHeader('Accept', 'application/json')
-            ->withHeader('User-Agent', sprintf('vcr-am-sdk-php/%s (+https://github.com/blob-am/vcr-am-sdk-php)', self::VERSION));
+            ->withHeader('User-Agent', $this->userAgent());
 
         if ($idempotencyKey !== null) {
             $request = $request->withHeader('Idempotency-Key', $idempotencyKey);

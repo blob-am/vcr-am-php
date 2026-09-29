@@ -468,8 +468,29 @@ $client = new VcrClient(
     requestFactory: $myPsr17Factory,       // optional — falls back to discovery
     streamFactory: $myPsr17Factory,        // optional — falls back to discovery
     logger: $myPsr3Logger,                 // optional — defaults to NullLogger
+    integration: 'my-plugin/1.2.3',        // optional — see below
 );
 ```
+
+### Naming your integration
+
+If this SDK ships inside something with a name of its own — a plugin, an app, a
+hosted product — say so. The token is appended to the SDK's own, and it is what
+lets a support question about your integration be answered from the server's
+request log:
+
+```php
+$client = new VcrClient(
+    apiKey: $apiKey,
+    integration: sprintf('my-plugin/%s (WordPress/%s; PHP/%s)', $pluginVersion, $wpVersion, PHP_VERSION),
+);
+
+// User-Agent: vcr-am-sdk-php/0.10.0 (+https://github.com/blob-am/vcr-am-sdk-php) my-plugin/1.2.3 (WordPress/7.1; PHP/8.4.2)
+```
+
+Printable ASCII, 1-200 characters, validated when the client is constructed:
+the value ends up in a header, and a version string assembled from platform
+metadata is not something to trust blindly.
 
 ### PSR-3 logger
 
