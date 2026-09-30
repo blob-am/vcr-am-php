@@ -2,6 +2,12 @@
 
 All notable changes to this package will be documented in this file.
 
+## [0.11.2] — 2026-09-30
+
+### Changed
+
+- The redaction added in 0.11.1 lost two branches nothing could reach: a depth cap (`json_decode` already refuses anything deeper than its own nesting limit, so the walk cannot run away) and a fallback for a request body that is not JSON (this SDK encodes every body it sends). No behaviour change; 0.11.1 is not wrong, just untestable in those two lines.
+
 ## [0.11.1] — 2026-09-30
 
 ### Fixed — a request body on an exception could carry a credential

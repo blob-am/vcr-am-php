@@ -86,13 +86,6 @@ final class Transport
      */
     private const SECRET_RESPONSE_KEYS = ['apiKey'];
 
-    /**
-     * Depth cap on the redaction walk. Nothing this SDK sends is close to it;
-     * the cap exists so a pathological structure cannot turn a redaction into
-     * an unbounded recursion.
-     */
-    private const MAX_REDACTION_DEPTH = 12;
-
     public readonly string $baseUrl;
 
     private readonly TreeMapper $mapper;
@@ -275,14 +268,9 @@ final class Transport
             return $request;
         }
 
-        $redacted = self::redactJson($body, self::SECRET_REQUEST_KEYS);
-        if ($redacted === null) {
-            // Not JSON, so not a body this SDK built. Nothing to walk, and
-            // replacing it with a marker would lose what little it says.
-            return $request;
-        }
-
-        return $request->withBody($this->streamFactory->createStream($redacted));
+        return $request->withBody($this->streamFactory->createStream(
+            self::redactBody($body, self::SECRET_REQUEST_KEYS),
+        ));
     }
 
     /**
@@ -293,31 +281,38 @@ final class Transport
      */
     private function redactResponseBody(string $rawBody): string
     {
-        return self::redactJson($rawBody, self::SECRET_RESPONSE_KEYS) ?? $rawBody;
+        return self::redactBody($rawBody, self::SECRET_RESPONSE_KEYS);
     }
 
     /**
-     * Re-encoded JSON with every named key replaced, or null when the input was
-     * not a JSON array or object to begin with.
+     * The same JSON with every named key's value replaced, or the input
+     * unchanged when it is not a JSON array or object — a body the parser
+     * refused is exactly the body someone needs to read.
      *
      * @param list<string> $secretKeys
      */
-    private static function redactJson(string $raw, array $secretKeys): ?string
+    private static function redactBody(string $raw, array $secretKeys): string
     {
         try {
             $decoded = json_decode($raw, associative: true, flags: JSON_THROW_ON_ERROR);
-
-            if (! is_array($decoded)) {
-                return null;
-            }
-
-            $encoded = json_encode(
-                self::redactValue($decoded, $secretKeys, 0),
-                JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
-            );
         } catch (JsonException) {
-            return null;
+            return $raw;
         }
+
+        if (! is_array($decoded)) {
+            return $raw;
+        }
+
+        $encoded = json_encode(
+            self::redactValue($decoded, $secretKeys),
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
+        );
+
+        // Cannot fail: the value came back out of json_decode, so it holds
+        // nothing json_encode refuses and nothing deeper than json_decode's own
+        // nesting limit — which is also why this walk needs no depth cap of its
+        // own.
+        assert(is_string($encoded));
 
         return $encoded;
     }
@@ -325,12 +320,8 @@ final class Transport
     /**
      * @param list<string> $secretKeys
      */
-    private static function redactValue(mixed $value, array $secretKeys, int $depth): mixed
+    private static function redactValue(mixed $value, array $secretKeys): mixed
     {
-        if ($depth >= self::MAX_REDACTION_DEPTH) {
-            return self::REDACTED;
-        }
-
         if (! is_array($value)) {
             return $value;
         }
@@ -340,7 +331,7 @@ final class Transport
         foreach ($value as $key => $entry) {
             $result[$key] = is_string($key) && in_array($key, $secretKeys, strict: true)
                 ? self::REDACTED
-                : self::redactValue($entry, $secretKeys, $depth + 1);
+                : self::redactValue($entry, $secretKeys);
         }
 
         return $result;

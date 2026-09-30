@@ -61,7 +61,7 @@ final class VcrClient
      * announcing itself as 0.7.0 because nothing checked it, which made the
      * server's request log unable to name the client it was talking to.
      */
-    public const VERSION = '0.11.1';
+    public const VERSION = '0.11.2';
 
     /**
      * Cap on the `$integration` product token. Long enough for a plugin name,
