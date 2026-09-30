@@ -2,6 +2,18 @@
 
 All notable changes to this package will be documented in this file.
 
+## [0.11.1] — 2026-09-30
+
+### Fixed — a request body on an exception could carry a credential
+
+- **Exceptions no longer hand an APM your secrets.** Every exception this SDK throws carries the request that caused it, and tools that serialise exception state (Sentry, Bugsnag, Laravel's handler) dump bodies as well as headers. The `X-API-Key` header was always stripped; the body was not, and until 0.11.0 nothing secret travelled in one.
+
+  Now redacted, by exact field name: `code` and `codeVerifier` (the two halves of a pairing exchange — a network failure there leaves the code possibly unspent, and it mints a register-wide key for two years), `password` (the cashier PIN, which `CreateCashierInput::__debugInfo()` only ever hid from `var_dump`), `pin` and `apiKey`.
+
+  A response body is redacted too, but only for `apiKey`: on the way back `code` is an SRC error code, and hiding it would blind the one field a refused receipt is diagnosed from. This matters for one response — a 200 from `/connect/exchange` whose shape has drifted becomes a `VcrValidationException` carrying the body, and that body holds the only copy of a key that is never shown again.
+
+  Business fields are untouched: `classifierCode`, `errorCode` and the rest read exactly as before, because a request body on an exception is how a rejected receipt gets diagnosed.
+
 ## [0.11.0] — 2026-09-30
 
 ### Added — `PairingClient`, so a store never asks a merchant to paste an API key

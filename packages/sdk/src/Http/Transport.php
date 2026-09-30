@@ -52,6 +52,47 @@ final class Transport
      */
     private const ERROR_BODY_PREVIEW_BYTES = 500;
 
+    private const REDACTED = '[REDACTED]';
+
+    /**
+     * Request-body fields that are credentials, by exact name.
+     *
+     * Exact and not by substring, which is what the server's own redactor uses:
+     * here the list has to be narrow enough to keep `classifierCode` and
+     * `errorCode` intact, because a request body on an exception is how a
+     * rejected receipt gets diagnosed.
+     *
+     * `code` and `codeVerifier` are the two halves of a pairing exchange, and
+     * `/connect/exchange` is the only body in this SDK carrying either name. A
+     * network failure there is the case that matters: the code may still be
+     * unspent, and the key it mints is register-wide for two years.
+     *
+     * `password` is the cashier PIN. {@see \BlobSolutions\VcrAm\Input\CreateCashierInput}
+     * keeps it out of a `var_dump` through `__debugInfo()`, which does nothing
+     * for the serialized body that travels on the exception.
+     */
+    private const SECRET_REQUEST_KEYS = ['code', 'codeVerifier', 'password', 'pin', 'apiKey'];
+
+    /**
+     * Response-body fields that are credentials, by exact name.
+     *
+     * Deliberately shorter than {@see SECRET_REQUEST_KEYS}: on the way back
+     * `code` is an SRC error code — {@see ErrorEnvelope} reads exactly that key
+     * — and hiding it would blind the one field a refused receipt is read from.
+     *
+     * `apiKey` is here for one response: a 200 from `/connect/exchange` whose
+     * shape has drifted becomes a `VcrValidationException` carrying the body,
+     * and that body is the only copy of a key that is never shown again.
+     */
+    private const SECRET_RESPONSE_KEYS = ['apiKey'];
+
+    /**
+     * Depth cap on the redaction walk. Nothing this SDK sends is close to it;
+     * the cap exists so a pathological structure cannot turn a redaction into
+     * an unbounded recursion.
+     */
+    private const MAX_REDACTION_DEPTH = 12;
+
     public readonly string $baseUrl;
 
     private readonly TreeMapper $mapper;
@@ -154,7 +195,7 @@ final class Transport
             $decoded = json_decode($rawBody, associative: true, flags: JSON_THROW_ON_ERROR);
         } catch (JsonException $e) {
             throw new VcrValidationException(
-                $rawBody,
+                $this->redactResponseBody($rawBody),
                 $this->redactRequest($request),
                 $response,
                 'response body is not valid JSON: ' . $e->getMessage(),
@@ -164,7 +205,7 @@ final class Transport
 
         if (! is_array($decoded)) {
             throw new VcrValidationException(
-                $rawBody,
+                $this->redactResponseBody($rawBody),
                 $this->redactRequest($request),
                 $response,
                 'expected JSON array or object at the response root, got ' . get_debug_type($decoded),
@@ -175,7 +216,7 @@ final class Transport
             return $this->mapper->map($signature, Source::array($decoded));
         } catch (MappingError $e) {
             throw new VcrValidationException(
-                $rawBody,
+                $this->redactResponseBody($rawBody),
                 $this->redactRequest($request),
                 $response,
                 $e->getMessage(),
@@ -215,14 +256,94 @@ final class Transport
     }
 
     /**
-     * Strips secret-bearing headers from the request before it gets attached
-     * to a public-facing exception. APMs and loggers that introspect
-     * exception state (Sentry, Bugsnag, Laravel's verbose handler) routinely
-     * dump request headers — we don't want the API key in those breadcrumbs.
+     * Strips secrets from the request before it gets attached to a
+     * public-facing exception. APMs and loggers that introspect exception state
+     * (Sentry, Bugsnag, Laravel's verbose handler) routinely dump request
+     * headers *and bodies* — we don't want a credential in those breadcrumbs.
+     *
+     * The header half has always been here. The body half arrived with
+     * pairing: until then every body this SDK sent was business data, and the
+     * one that was not — a cashier's PIN — was only protected against
+     * `var_dump`.
      */
     private function redactRequest(RequestInterface $request): RequestInterface
     {
-        return $request->withoutHeader('X-API-Key');
+        $request = $request->withoutHeader('X-API-Key');
+
+        $body = (string) $request->getBody();
+        if ($body === '') {
+            return $request;
+        }
+
+        $redacted = self::redactJson($body, self::SECRET_REQUEST_KEYS);
+        if ($redacted === null) {
+            // Not JSON, so not a body this SDK built. Nothing to walk, and
+            // replacing it with a marker would lose what little it says.
+            return $request;
+        }
+
+        return $request->withBody($this->streamFactory->createStream($redacted));
+    }
+
+    /**
+     * The response body as it may be attached to an exception.
+     *
+     * Only the success path needs this: a mapping failure is the one way a body
+     * that contains a minted API key reaches exception state.
+     */
+    private function redactResponseBody(string $rawBody): string
+    {
+        return self::redactJson($rawBody, self::SECRET_RESPONSE_KEYS) ?? $rawBody;
+    }
+
+    /**
+     * Re-encoded JSON with every named key replaced, or null when the input was
+     * not a JSON array or object to begin with.
+     *
+     * @param list<string> $secretKeys
+     */
+    private static function redactJson(string $raw, array $secretKeys): ?string
+    {
+        try {
+            $decoded = json_decode($raw, associative: true, flags: JSON_THROW_ON_ERROR);
+
+            if (! is_array($decoded)) {
+                return null;
+            }
+
+            $encoded = json_encode(
+                self::redactValue($decoded, $secretKeys, 0),
+                JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
+            );
+        } catch (JsonException) {
+            return null;
+        }
+
+        return $encoded;
+    }
+
+    /**
+     * @param list<string> $secretKeys
+     */
+    private static function redactValue(mixed $value, array $secretKeys, int $depth): mixed
+    {
+        if ($depth >= self::MAX_REDACTION_DEPTH) {
+            return self::REDACTED;
+        }
+
+        if (! is_array($value)) {
+            return $value;
+        }
+
+        $result = [];
+
+        foreach ($value as $key => $entry) {
+            $result[$key] = is_string($key) && in_array($key, $secretKeys, strict: true)
+                ? self::REDACTED
+                : self::redactValue($entry, $secretKeys, $depth + 1);
+        }
+
+        return $result;
     }
 
     /**
