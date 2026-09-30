@@ -4,9 +4,17 @@ declare(strict_types=1);
 
 use BlobSolutions\LaravelVcrAm\VcrAmServiceProvider;
 use BlobSolutions\VcrAm\VcrClient;
+use Http\Mock\Client as MockClient;
 use Illuminate\Support\ServiceProvider;
+use Nyholm\Psr7\Factory\Psr17Factory;
+use Nyholm\Psr7\Response;
+use Psr\Http\Client\ClientInterface;
+use Psr\Http\Message\RequestFactoryInterface;
+use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use Stringable;
 
 it('binds VcrClient as a singleton in the container', function (): void {
     $first = $this->app->make(VcrClient::class);
@@ -17,16 +25,29 @@ it('binds VcrClient as a singleton in the container', function (): void {
 });
 
 it('reads api key and base url from the vcr-am config', function (): void {
+    // Asserted on the request the client actually sends rather than on its
+    // private state: the key only matters if it reaches the wire, and the
+    // SDK is free to keep it wherever it likes.
+    $mockClient = new MockClient();
+    $factory = new Psr17Factory();
+    $this->app->instance(ClientInterface::class, $mockClient);
+    $this->app->instance(RequestFactoryInterface::class, $factory);
+    $this->app->instance(StreamFactoryInterface::class, $factory);
+
     $this->app->forgetInstance(VcrClient::class);
     config()->set('vcr-am.api_key', 'a-different-key');
     config()->set('vcr-am.base_url', 'https://override.example/api');
 
     $client = $this->app->make(VcrClient::class);
+    $mockClient->addResponse(new Response(200, ['Content-Type' => 'application/json'], '[]'));
+    $client->listCashiers();
 
-    $reflection = new ReflectionObject($client);
+    $request = $mockClient->getLastRequest();
+    assert($request instanceof RequestInterface);
 
-    expect($reflection->getProperty('apiKey')->getValue($client))->toBe('a-different-key');
-    expect($reflection->getProperty('baseUrl')->getValue($client))->toBe('https://override.example/api');
+    expect($request->getHeaderLine('X-API-Key'))->toBe('a-different-key')
+        ->and((string) $request->getUri())->toBe('https://override.example/api/cashiers')
+        ->and($client->baseUrl)->toBe('https://override.example/api');
 });
 
 it('falls back to the SDK default base url when the config value is null', function (): void {
@@ -90,16 +111,36 @@ it('throws when the base url is not a string or null', function (): void {
 });
 
 it('passes the PSR-3 logger bound by Laravel into the SDK client', function (): void {
+    // Same reasoning as the api-key test: what matters is that the logger
+    // Laravel bound is the one the SDK writes to, which only a real call
+    // can show.
+    $logger = new class () extends NullLogger {
+        /** @var list<string> */
+        public array $messages = [];
+
+        /**
+         * @param array<string, mixed> $context
+         */
+        public function log(mixed $level, string|Stringable $message, array $context = []): void
+        {
+            $this->messages[] = (string) $message;
+        }
+    };
+
+    $mockClient = new MockClient();
+    $factory = new Psr17Factory();
+    $this->app->instance(ClientInterface::class, $mockClient);
+    $this->app->instance(RequestFactoryInterface::class, $factory);
+    $this->app->instance(StreamFactoryInterface::class, $factory);
+    $this->app->instance(LoggerInterface::class, $logger);
+
     $this->app->forgetInstance(VcrClient::class);
 
     $client = $this->app->make(VcrClient::class);
+    $mockClient->addResponse(new Response(200, ['Content-Type' => 'application/json'], '[]'));
+    $client->listCashiers();
 
-    $reflection = new ReflectionObject($client);
-    $logger = $reflection->getProperty('logger')->getValue($client);
-
-    expect($logger)
-        ->toBeInstanceOf(LoggerInterface::class)
-        ->not->toBeInstanceOf(NullLogger::class);
+    expect($logger->messages)->toContain('VCR.AM request');
 });
 
 it('publishes the config file under the vcr-am-config tag', function (): void {
