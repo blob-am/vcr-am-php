@@ -11,9 +11,9 @@ use Psr\Http\Message\ResponseInterface;
 use Throwable;
 
 /**
- * Thrown when the VCR.AM API returns a non-2xx HTTP response. The original
- * request and response are preserved verbatim so callers can inspect headers,
- * trace IDs, or replay the call against a different environment.
+ * Thrown when the VCR.AM API returns a non-2xx HTTP response. The response is
+ * preserved verbatim; the request is preserved minus its secrets, so it says
+ * what was attempted but cannot be replayed — see `$request`.
  *
  * The API's error envelope is `{ error, issues?, requestId?, pending? }`;
  * every field of it is surfaced here. `rawBody` remains available for the
@@ -29,6 +29,11 @@ final class VcrApiException extends VcrException
         /** The envelope's `error`; null when the body was not a VCR envelope. */
         public readonly ?string $apiErrorMessage,
         public readonly string $rawBody,
+        /**
+         * The request as sent, minus its secrets: the `X-API-Key` header is
+         * removed and credential-bearing body fields are replaced with
+         * `[REDACTED]`, because APMs serialise exception state.
+         */
         public readonly RequestInterface $request,
         public readonly ResponseInterface $response,
         /** Field-level complaints, present when the request failed validation. */

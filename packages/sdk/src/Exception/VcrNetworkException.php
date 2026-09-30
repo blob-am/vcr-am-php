@@ -15,6 +15,13 @@ use Throwable;
 final class VcrNetworkException extends VcrException
 {
     public function __construct(
+        /**
+         * The request as sent, minus its secrets: the `X-API-Key` header is
+         * removed and credential-bearing body fields are replaced with
+         * `[REDACTED]`, because APMs serialise exception state. Read it to see
+         * what was attempted — do not replay it, since what it now holds is not
+         * what the server would accept.
+         */
         public readonly RequestInterface $request,
         Throwable $previous,
     ) {
