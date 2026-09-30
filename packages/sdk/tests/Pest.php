@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use BlobSolutions\VcrAm\PairingClient;
 use BlobSolutions\VcrAm\VcrClient;
 use Http\Mock\Client as MockClient;
 use Nyholm\Psr7\Factory\Psr17Factory;
@@ -24,6 +25,25 @@ function makeMockedClient(): array
         httpClient: $mockClient,
         requestFactory: $factory,
         streamFactory: $factory,
+    );
+
+    return [$client, $mockClient, $factory];
+}
+
+/**
+ * The same wiring for {@see PairingClient}, which takes no API key.
+ *
+ * @return array{0: PairingClient, 1: MockClient, 2: Psr17Factory}
+ */
+function makeMockedPairingClient(?string $integration = null): array
+{
+    $mockClient = new MockClient();
+    $factory = new Psr17Factory();
+    $client = new PairingClient(
+        httpClient: $mockClient,
+        requestFactory: $factory,
+        streamFactory: $factory,
+        integration: $integration,
     );
 
     return [$client, $mockClient, $factory];

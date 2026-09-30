@@ -2,6 +2,42 @@
 
 All notable changes to this package will be documented in this file.
 
+## [0.11.0] — 2026-09-30
+
+### Added — `PairingClient`, so a store never asks a merchant to paste an API key
+
+- **A store can now obtain its own key through the merchant's browser.** The merchant clicks "connect" in the store, approves on vcr.am against a register they already manage, and comes back paired. Nobody copies a secret between two tabs, and the store never sees a key belonging to a register the merchant did not pick.
+
+  ```php
+  $pairing = new PairingClient(integration: 'my-store/1.0');
+
+  $verifier = CodeVerifier::generate();
+  $state = bin2hex(random_bytes(16));
+  // persist both against this merchant's session
+
+  $request = $pairing->registerRequest(new RegisterPairingRequestInput(
+      redirectUri: 'https://shop.example/wp-admin/admin.php?page=vcr-am',
+      storeName: 'Example Shop',
+      state: $state,
+      codeChallenge: CodeVerifier::challengeFor($verifier),
+  ));
+  // send the browser to $request->connectUrl
+
+  // on the redirect back, once `state` matches what was stored:
+  $paired = $pairing->exchangeCode($_GET['code'], $verifier);
+  // persist $paired->apiKey — it is shown once and never retrievable again
+  ```
+
+  `PairingClient` takes no API key, because obtaining the first one is the point. Neither call grants anything on its own: the request is inert until a signed-in merchant approves it, and the exchange only succeeds for a caller holding the verifier behind the registered challenge.
+
+- **`CodeVerifier` generates and checks PKCE (RFC 7636) secrets.** Only the S256 method — `plain` would make the challenge equal the secret it is supposed to protect. The derivation is pinned to the RFC's own Appendix B vector, because a challenge computed wrongly on both sides still round-trips and fails only against the real server.
+
+- **`exchangeCode` refuses a malformed verifier before sending anything.** The code is single-use; letting a typo reach the server burns it against a pairing the store can then never complete.
+
+### Changed
+
+- **The HTTP plumbing moved into an internal `Http\Transport`.** `VcrClient` behaves identically — it delegates — but pairing now shares one error vocabulary with it rather than growing a second one: a 4xx is still a `VcrApiException` carrying the server's own message, a socket failure a `VcrNetworkException` with a redacted request, an unparseable body a `VcrValidationException`. No public API changed.
+
 ## [0.10.0] — 2026-09-29
 
 ### Added — `integration`, so a plugin can name itself in the `User-Agent`

@@ -65,6 +65,67 @@ echo "Public receipt: https://vcr.am/{$response->urlId}\n";
 
 Every input DTO is constructor-validated, so malformed payloads fail at the call site — not after a round-trip to the SRC. All decimal monetary values are passed as strings to preserve precision over the wire (see [Monetary precision](#monetary-precision) below).
 
+## Pairing a store with a register
+
+If your software is installed by merchants — a WooCommerce plugin, a POS, a
+booking system — do not ask them to paste an API key. `PairingClient` gets you
+one through the merchant's own browser: they click "connect" in your software,
+approve on vcr.am against a register they already manage, and come back paired.
+
+It takes no API key, because obtaining the first one is the point.
+
+```php
+use BlobSolutions\VcrAm\Input\RegisterPairingRequestInput;
+use BlobSolutions\VcrAm\Pairing\CodeVerifier;
+use BlobSolutions\VcrAm\PairingClient;
+
+$pairing = new PairingClient(integration: 'my-store/1.0');
+
+// 1. Before you redirect. Persist both against this merchant's session.
+$verifier = CodeVerifier::generate();
+$state = bin2hex(random_bytes(16));
+
+$request = $pairing->registerRequest(new RegisterPairingRequestInput(
+    redirectUri: 'https://shop.example/wp-admin/admin.php?page=vcr-am',
+    storeName: 'Example Shop',
+    state: $state,
+    codeChallenge: CodeVerifier::challengeFor($verifier),
+));
+
+// 2. Send the merchant's browser to $request->connectUrl.
+
+// 3. They return to your redirectUri with `code` and `state`.
+//    Check `state` against what you stored, then:
+$paired = $pairing->exchangeCode($code, $verifier);
+
+// Store this now. It is shown once and is never retrievable again.
+$apiKey = $paired->apiKey;
+
+echo "Paired with {$paired->registerName} (VCR {$paired->vcrId})\n";
+```
+
+Both calls run on your server. The verifier is what proves the exchange is you,
+so it must never reach the merchant's machine — a code intercepted in the
+redirect is worthless without it.
+
+Three things worth knowing:
+
+- **`state` is yours, and the SDK does not generate it.** It comes back
+  untouched on the redirect and is how you tell your own pairing from a
+  replayed or forged one, which means it has to be checked against something
+  you persisted.
+- **`redirectUri` is shown to the merchant before they approve**, so make it a
+  page they would recognise as their own shop. It must be absolute `https`
+  (plain `http` only on loopback), with no fragment and no credentials.
+- **Every exchange failure returns one identical message.** Unknown, already
+  used, expired and wrong-verifier are deliberately indistinguishable, so a
+  stolen code cannot be probed for liveness. Do not branch on the text.
+
+The returned key is register-wide and does not expire for two years;
+`$paired->expiresAt` is when it does. `$paired->crn` is `null` for a register
+that has not finished activating with the tax service, which is worth showing
+the merchant — calls with that key will be refused until it has.
+
 ## Endpoints
 
 ### `listCashiers(): list<CashierListItem>`
