@@ -13,8 +13,9 @@ use JsonSerializable;
  *
  * Mirrors `RegisterPrepaymentRefundInput` from the TypeScript SDK. The
  * minimal payload is `cashier` + `prepaymentId` — the API refunds the
- * full prepayment by default. Provide `reason`, `reasonNote`, or `receipt`
- * to enrich the refund record.
+ * full prepayment by default, and refuses one a sale has used. Set
+ * `returnRemainder` to return all that sales left of it instead. Provide
+ * `reason`, `reasonNote`, or `receipt` to enrich the refund record.
  */
 final readonly class RegisterPrepaymentRefundInput implements JsonSerializable
 {
@@ -24,6 +25,7 @@ final readonly class RegisterPrepaymentRefundInput implements JsonSerializable
         public ?SendReceiptToBuyer $receipt = null,
         public ?RefundReason $reason = null,
         public ?string $reasonNote = null,
+        public bool $returnRemainder = false,
     ) {
         if ($prepaymentId < 0) {
             throw new InvalidArgumentException('prepaymentId must be non-negative.');
@@ -43,6 +45,10 @@ final readonly class RegisterPrepaymentRefundInput implements JsonSerializable
             'cashier' => $this->cashier,
             'prepaymentId' => $this->prepaymentId,
         ];
+
+        if ($this->returnRemainder) {
+            $payload['returnRemainder'] = true;
+        }
 
         if ($this->receipt !== null) {
             $payload['receipt'] = $this->receipt;

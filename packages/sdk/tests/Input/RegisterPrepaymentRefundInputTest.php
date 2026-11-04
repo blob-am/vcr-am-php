@@ -63,3 +63,18 @@ it('rejects an empty reasonNote when provided', function (): void {
         reasonNote: '   ',
     );
 })->throws(InvalidArgumentException::class, 'reasonNote must not be empty');
+
+it('sends returnRemainder only when asked for', function (): void {
+    $plain = new RegisterPrepaymentRefundInput(
+        cashier: CashierId::byDeskId('desk-1'),
+        prepaymentId: 7,
+    );
+    $remainder = new RegisterPrepaymentRefundInput(
+        cashier: CashierId::byDeskId('desk-1'),
+        prepaymentId: 7,
+        returnRemainder: true,
+    );
+
+    expect($plain->jsonSerialize())->not->toHaveKey('returnRemainder')
+        ->and($remainder->jsonSerialize()['returnRemainder'])->toBeTrue();
+});
