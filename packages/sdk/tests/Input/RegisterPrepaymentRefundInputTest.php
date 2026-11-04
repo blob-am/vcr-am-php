@@ -76,5 +76,5 @@ it('sends returnRemainder only when asked for', function (): void {
     );
 
     expect($plain->jsonSerialize())->not->toHaveKey('returnRemainder')
-        ->and($remainder->jsonSerialize()['returnRemainder'])->toBeTrue();
+        ->and($remainder->jsonSerialize())->toHaveKey('returnRemainder', true);
 });
