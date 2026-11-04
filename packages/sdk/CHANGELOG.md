@@ -2,6 +2,12 @@
 
 All notable changes to this package will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- `prepaymentId` on `RegisterSaleInput`. Names the prepayment `amount.prepayment` is spent from, so offsetting one order cannot use up another order's prepayment. A prepayment that cannot cover the amount refuses the sale with a `400` and nothing saved.
+
 ## [0.11.2] — 2026-09-30
 
 ### Changed

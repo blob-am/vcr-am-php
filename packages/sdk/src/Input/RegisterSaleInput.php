@@ -43,6 +43,10 @@ final readonly class RegisterSaleInput implements JsonSerializable
      *                                   trims whitespace. Purely internal — never
      *                                   printed on the buyer's receipt nor sent to
      *                                   the tax authority.
+     * @param ?int           $prepaymentId The prepayment `amount.prepayment` is
+     *                                   spent from. Without it the sale consumes
+     *                                   the oldest open prepayments, which for a
+     *                                   buyer with no TIN means anyone's.
      */
     public function __construct(
         public CashierId $cashier,
@@ -51,6 +55,7 @@ final readonly class RegisterSaleInput implements JsonSerializable
         public Buyer $buyer,
         public ?AutoSettle $autoSettle = null,
         public ?string $comment = null,
+        public ?int $prepaymentId = null,
     ) {
         if ($items === []) {
             throw new InvalidArgumentException('A sale must contain at least one item.');
@@ -64,6 +69,10 @@ final readonly class RegisterSaleInput implements JsonSerializable
                 'Provide exactly one of `amount` (explicit AMD per tender) or `autoSettle` (VCR derives the total).',
             );
         }
+
+        if ($prepaymentId !== null && $amount?->prepayment === null) {
+            throw new InvalidArgumentException('`prepaymentId` needs an `amount.prepayment` to spend from it.');
+        }
     }
 
     /**
@@ -71,9 +80,9 @@ final readonly class RegisterSaleInput implements JsonSerializable
      *
      * @param list<SaleItem> $items
      */
-    public static function withAmount(CashierId $cashier, array $items, SaleAmount $amount, Buyer $buyer, ?string $comment = null): self
+    public static function withAmount(CashierId $cashier, array $items, SaleAmount $amount, Buyer $buyer, ?string $comment = null, ?int $prepaymentId = null): self
     {
-        return new self($cashier, $items, $amount, $buyer, comment: $comment);
+        return new self($cashier, $items, $amount, $buyer, comment: $comment, prepaymentId: $prepaymentId);
     }
 
     /**
@@ -114,6 +123,10 @@ final readonly class RegisterSaleInput implements JsonSerializable
 
         if ($this->comment !== null) {
             $payload['comment'] = $this->comment;
+        }
+
+        if ($this->prepaymentId !== null) {
+            $payload['prepaymentId'] = $this->prepaymentId;
         }
 
         return $payload;

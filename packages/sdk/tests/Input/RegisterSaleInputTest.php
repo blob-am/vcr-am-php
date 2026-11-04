@@ -155,3 +155,37 @@ it('builds an amount sale via the withAmount named constructor', function (): vo
     expect($input->amount)->not->toBeNull()
         ->and($input->autoSettle)->toBeNull();
 });
+
+it('sends the prepayment a sale spends', function (): void {
+    $input = RegisterSaleInput::withAmount(
+        cashier: CashierId::byInternalId(1),
+        items: [new SaleItem(
+            offer: Offer::existing('sku-1'),
+            quantity: '1',
+            price: '100',
+            unit: Unit::Piece,
+        )],
+        amount: new SaleAmount(prepayment: '100'),
+        buyer: Buyer::individual(),
+        prepaymentId: 75,
+    );
+
+    $decoded = json_decode((string) json_encode($input), true);
+
+    expect($decoded)->toHaveKey('prepaymentId', 75);
+});
+
+it('refuses a prepaymentId with no prepayment amount to spend', function (): void {
+    RegisterSaleInput::withAmount(
+        cashier: CashierId::byInternalId(1),
+        items: [new SaleItem(
+            offer: Offer::existing('sku-1'),
+            quantity: '1',
+            price: '100',
+            unit: Unit::Piece,
+        )],
+        amount: new SaleAmount(cash: '100'),
+        buyer: Buyer::individual(),
+        prepaymentId: 75,
+    );
+})->throws(InvalidArgumentException::class);
