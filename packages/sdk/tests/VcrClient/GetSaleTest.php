@@ -136,6 +136,7 @@ it('handles a null receipt and a refund with its own receipt', function (): void
             [
                 'nonCashAmount' => 200,
                 'cashAmount' => 0,
+                'prepaymentAmount' => 300,
                 'receipt' => null,
                 'items' => [['quantity' => 1]],
             ],
@@ -160,6 +161,7 @@ it('handles a null receipt and a refund with its own receipt', function (): void
 
     expect($refund)->toBeInstanceOf(SaleRefund::class)
         ->and($refund->nonCashAmount)->toBe(200.0)
+        ->and($refund->prepaymentAmount)->toBe(300.0)
         ->and($refund->receipt)->toBeNull();
 
     Assert::assertCount(1, $refund->items);

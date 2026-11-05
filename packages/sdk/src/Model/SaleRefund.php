@@ -17,6 +17,7 @@ final readonly class SaleRefund
     public function __construct(
         public float $nonCashAmount,
         public float $cashAmount,
+        public float $prepaymentAmount,
         public ?Receipt $receipt,
         public array $items,
     ) {

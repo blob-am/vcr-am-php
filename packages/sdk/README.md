@@ -399,6 +399,8 @@ $response = $client->registerSaleRefund(new RegisterSaleRefundInput(
 ));
 ```
 
+A sale paid partly with a prepayment names that part apart from the money: `new RefundAmount(cash: '200', prepayment: '300')`. It reads back as `prepaymentAmount` on each of `SaleDetail::$refunds`. A full refund needs neither `refundAmounts` nor `items`.
+
 ### `registerPrepayment(RegisterPrepaymentInput $input): RegisterPrepaymentResponse`
 
 Registers an advance payment from a buyer that will be redeemed against a future sale. Has no items — a prepayment is a single sum, not a basket.

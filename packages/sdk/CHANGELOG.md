@@ -4,6 +4,11 @@ All notable changes to this package will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `RefundAmount::$prepayment`. A partial refund of a sale paid with a prepayment names that part on its own, instead of being refused for exceeding the cash the sale took.
+- `SaleRefund::$prepaymentAmount`, read from each of `SaleDetail::$refunds`.
+
 ## [0.12.0] — 2026-11-04
 
 ### Added
