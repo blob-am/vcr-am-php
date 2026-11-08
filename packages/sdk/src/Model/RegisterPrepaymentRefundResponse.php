@@ -7,8 +7,12 @@ namespace BlobSolutions\VcrAm\Model;
 /**
  * Response payload from {@see \BlobSolutions\VcrAm\VcrClient::registerPrepaymentRefund()}.
  *
- * `crn` and `fiscal` are nullable for the same reason as
+ * `crn` is nullable for the same reason as
  * {@see RegisterPrepaymentResponse}: SRC fiscal issuance may be pending.
+ *
+ * `fiscal` is always null: SRC assigns no fiscal number to a return receipt
+ * (its printReturnReceipt response has no such field and the receipt QR reads
+ * `FISCAL: null`). The refund is identified by `crn` and `receiptId`.
  *
  * `receiptUrl` is the buyer-facing receipt page, safe to email or print as a
  * QR — it carries no account access. Nullable rather than required: the field
