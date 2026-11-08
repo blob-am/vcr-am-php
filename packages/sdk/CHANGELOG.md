@@ -4,6 +4,12 @@ All notable changes to this package will be documented in this file.
 
 ## [Unreleased]
 
+## [0.13.1] — 2026-11-08
+
+### Changed
+
+- `fiscal` on `RegisterSaleRefundResponse` and `RegisterPrepaymentRefundResponse` is documented as always `null`. SRC assigns no fiscal number to a return receipt: its `printReturnReceipt` response has no such field and the receipt QR reads `FISCAL: null`. The refund is identified by `crn` and `receiptId`. Types are unchanged. The previous docblocks blamed a pending or failed fiscalization, which was wrong.
+
 ## [0.13.0] — 2026-11-05
 
 ### Added
