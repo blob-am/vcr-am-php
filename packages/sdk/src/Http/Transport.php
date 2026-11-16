@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BlobSolutions\VcrAm\Http;
 
+use BlobSolutions\VcrAm\Diagnostics\RequestObserver;
 use BlobSolutions\VcrAm\Exception\VcrApiException;
 use BlobSolutions\VcrAm\Exception\VcrNetworkException;
 use BlobSolutions\VcrAm\Exception\VcrValidationException;
@@ -17,6 +18,7 @@ use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Log\LoggerInterface;
 
@@ -103,6 +105,7 @@ final class Transport
         private readonly RequestFactoryInterface $requestFactory,
         private readonly StreamFactoryInterface $streamFactory,
         private readonly LoggerInterface $logger,
+        private readonly ?RequestObserver $observer = null,
     ) {
         $this->baseUrl = rtrim($baseUrl, '/');
         $this->mapper = (new MapperBuilder())
@@ -135,6 +138,42 @@ final class Transport
         ?array $query = null,
         ?string $idempotencyKey = null,
     ): mixed {
+        $recorder = new AttemptRecorder($this->observer, $this->logger, $method, $path, $idempotencyKey);
+
+        try {
+            [$response, $mapped] = $this->exchange($method, $path, $signature, $jsonBody, $query, $idempotencyKey);
+        } catch (VcrApiException|VcrNetworkException|VcrValidationException $e) {
+            $recorder->failed($e);
+
+            throw $e;
+        }
+
+        $recorder->succeeded($response);
+
+        return $mapped;
+    }
+
+    /**
+     * @param non-empty-string                      $method
+     * @param non-empty-string                      $path
+     * @param non-empty-string                      $signature
+     * @param array<string, mixed>|list<mixed>|null $jsonBody
+     * @param ?array<string, string>                $query
+     *
+     * @return array{0: ResponseInterface, 1: mixed} The response and the value mapped from its body
+     *
+     * @throws VcrApiException
+     * @throws VcrNetworkException
+     * @throws VcrValidationException
+     */
+    private function exchange(
+        string $method,
+        string $path,
+        string $signature,
+        ?array $jsonBody,
+        ?array $query,
+        ?string $idempotencyKey,
+    ): array {
         $request = $this->buildRequest($method, $path, $jsonBody, $query, $idempotencyKey);
 
         $this->logger->debug('VCR.AM request', [
@@ -206,7 +245,7 @@ final class Transport
         }
 
         try {
-            return $this->mapper->map($signature, Source::array($decoded));
+            return [$response, $this->mapper->map($signature, Source::array($decoded))];
         } catch (MappingError $e) {
             throw new VcrValidationException(
                 $this->redactResponseBody($rawBody),

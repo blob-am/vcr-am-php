@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BlobSolutions\VcrAm;
 
+use BlobSolutions\VcrAm\Diagnostics\RequestObserver;
 use BlobSolutions\VcrAm\Exception\VcrApiException;
 use BlobSolutions\VcrAm\Exception\VcrNetworkException;
 use BlobSolutions\VcrAm\Exception\VcrValidationException;
@@ -79,6 +80,7 @@ final class PairingClient
         ?StreamFactoryInterface $streamFactory = null,
         ?LoggerInterface $logger = null,
         ?string $integration = null,
+        ?RequestObserver $requestObserver = null,
     ) {
         $this->transport = new Transport(
             baseUrl: $baseUrl,
@@ -89,6 +91,7 @@ final class PairingClient
             requestFactory: $requestFactory ?? Psr17FactoryDiscovery::findRequestFactory(),
             streamFactory: $streamFactory ?? Psr17FactoryDiscovery::findStreamFactory(),
             logger: $logger ?? new NullLogger(),
+            observer: $requestObserver,
         );
         $this->baseUrl = $this->transport->baseUrl;
     }

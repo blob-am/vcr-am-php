@@ -463,6 +463,38 @@ $amdEquivalent = (float) $usdPrice * $rate->ratePerUnit;
 echo "1 USD = {$rate->ratePerUnit} AMD (rate date {$rate->rateDate})\n";
 ```
 
+### `submitSupportReport(SupportReportInput $input): SupportReportReceipt`
+
+For a "Report a problem" button in your integration. Sends what the person
+wrote together with what your side knows; VCR.AM adds its own log of the
+register's recent calls when the report is read.
+
+```php
+use BlobSolutions\VcrAm\Input\SupportReportInput;
+
+$receipt = $client->submitSupportReport(new SupportReportInput(
+    message: $whatThePersonTyped,
+    context: [
+        'integration' => 'my-plugin/1.2.3',
+        'order' => ['status' => 'pending', 'paymentMethod' => 'card'],
+        'recentCalls' => $journal,
+    ],
+    traceIds: $traceIdsOfTheCallsInQuestion,
+    contact: $whereToAnswer,
+));
+
+echo $receipt->reference; // e.g. 7K4M-2QXD
+```
+
+- Send it when a person asks to, never automatically. Every report is read by a
+  human, and a register is limited to 10 an hour.
+- Leave your customers' personal data out of `context`. A diagnosis does not
+  need a buyer's name, phone or address.
+- Show the reference to the person and tell them to write to support@vcr.am
+  quoting it. A report is diagnostics, not a conversation.
+- `context` is limited to 256 KB; over that the server answers `413`.
+- Works for a register that is not activated yet.
+
 ## Error handling
 
 Every call can raise one of three exceptions, all extending the abstract `BlobSolutions\VcrAm\Exception\VcrException`. Catch the base class to handle any SDK-level failure, or branch on the concrete subclass when you care about the cause:
@@ -578,6 +610,45 @@ Channels emitted:
 | `warning` | `VCR.AM API error` | `method`, `url`, `status`, `errorCode`, `errorMessage`, `rawBodyPreview` (≤500 bytes) |
 
 The X-API-Key header is never logged.
+
+### Request observer
+
+Pass a `RequestObserver` to be told about every call once it has ended, whether
+it succeeded, was refused, or never got an answer. It is meant for a journal on
+your side: when a merchant says a receipt never came out, the journal shows
+whether a request was sent at all.
+
+```php
+use BlobSolutions\VcrAm\Diagnostics\RequestAttempt;
+use BlobSolutions\VcrAm\Diagnostics\RequestObserver;
+
+final class Journal implements RequestObserver
+{
+    public function onRequestAttempt(RequestAttempt $attempt): void
+    {
+        $this->insert([
+            'at' => $attempt->startedAt,
+            'call' => $attempt->method . ' ' . $attempt->path,
+            'status' => $attempt->statusCode,       // null: no response arrived
+            'ms' => $attempt->durationMs,
+            'trace_id' => $attempt->traceId,
+            'idempotency_key' => $attempt->idempotencyKey,
+            'failure' => $attempt->failure,         // null on success
+        ]);
+    }
+}
+
+$client = new VcrClient(apiKey: $apiKey, requestObserver: new Journal());
+```
+
+`traceId` is the server's id for the call, read from the `VCR-Trace-Id` response
+header. Quote it to support, or pass it in `SupportReportInput::$traceIds`, and
+the server's record of that call is found directly.
+
+An attempt holds no headers, no bodies and no query string, so it is safe to
+keep. An exception thrown by the observer is logged to the PSR-3 logger and not
+rethrown: a failed journal write must not make a registered receipt look like a
+failure. `PairingClient` takes the same argument.
 
 ### PSR-18 HTTP client
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BlobSolutions\VcrAm;
 
+use BlobSolutions\VcrAm\Diagnostics\RequestObserver;
 use BlobSolutions\VcrAm\Exception\VcrApiException;
 use BlobSolutions\VcrAm\Exception\VcrNetworkException;
 use BlobSolutions\VcrAm\Exception\VcrValidationException;
@@ -16,6 +17,7 @@ use BlobSolutions\VcrAm\Input\RegisterPrepaymentInput;
 use BlobSolutions\VcrAm\Input\RegisterPrepaymentRefundInput;
 use BlobSolutions\VcrAm\Input\RegisterSaleInput;
 use BlobSolutions\VcrAm\Input\RegisterSaleRefundInput;
+use BlobSolutions\VcrAm\Input\SupportReportInput;
 use BlobSolutions\VcrAm\Model\AccountInfo;
 use BlobSolutions\VcrAm\Model\CashierListItem;
 use BlobSolutions\VcrAm\Model\ClassifierSearchItem;
@@ -33,6 +35,7 @@ use BlobSolutions\VcrAm\Model\RegisterPrepaymentResponse;
 use BlobSolutions\VcrAm\Model\RegisterSaleRefundResponse;
 use BlobSolutions\VcrAm\Model\RegisterSaleResponse;
 use BlobSolutions\VcrAm\Model\SaleDetail;
+use BlobSolutions\VcrAm\Model\SupportReportReceipt;
 use Http\Discovery\Psr17FactoryDiscovery;
 use Http\Discovery\Psr18ClientDiscovery;
 use InvalidArgumentException;
@@ -81,6 +84,7 @@ final class VcrClient
         ?StreamFactoryInterface $streamFactory = null,
         ?LoggerInterface $logger = null,
         ?string $integration = null,
+        ?RequestObserver $requestObserver = null,
     ) {
         if (trim($apiKey) === '') {
             throw new InvalidArgumentException('apiKey must not be empty.');
@@ -95,6 +99,7 @@ final class VcrClient
             requestFactory: $requestFactory ?? Psr17FactoryDiscovery::findRequestFactory(),
             streamFactory: $streamFactory ?? Psr17FactoryDiscovery::findStreamFactory(),
             logger: $logger ?? new NullLogger(),
+            observer: $requestObserver,
         );
         $this->baseUrl = $this->transport->baseUrl;
     }
@@ -638,6 +643,37 @@ final class VcrClient
             ExchangeRate::class,
             null,
             ['currency' => $currency],
+        );
+
+        return $result;
+    }
+
+    /**
+     * Sends a diagnostic report to VCR.AM support: what the person wrote plus
+     * what your side knows. The server adds its own log of this register's
+     * recent calls when the report is read.
+     *
+     * For a "Report a problem" button. Send it when a person asks to, never
+     * automatically: every report is read by a human, and a register is
+     * limited to a handful per hour (`429` beyond that; the earlier ones
+     * arrived). Show the returned reference to the person and tell them where
+     * to write; a report is diagnostics, not a conversation.
+     *
+     * Works for a register that is not activated yet, which is the one most
+     * likely to need it.
+     *
+     * @throws VcrApiException        `413` when `context` is over the server's size limit
+     * @throws VcrNetworkException    On network/transport failures
+     * @throws VcrValidationException On schema mismatches in the response body
+     */
+    public function submitSupportReport(SupportReportInput $input): SupportReportReceipt
+    {
+        /** @var SupportReportReceipt $result */
+        $result = $this->request(
+            'POST',
+            '/support/reports',
+            SupportReportReceipt::class,
+            $input->jsonSerialize(),
         );
 
         return $result;
